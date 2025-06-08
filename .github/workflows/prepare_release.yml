@@ -1,0 +1,75 @@
+---
+name: 'Prepare Release'
+
+on:
+  workflow_call:
+    inputs:
+      allowed_owner:
+        description: 'Only allow this owner'
+        required: true
+        type: string
+      version:
+        description: 'Version to be released.'
+        required: false
+        default: ''
+        type: string
+      base-branch:
+        description: 'The branch that will be used as the origin for the release branch.'
+        required: false
+        default: ''
+        type: string
+    secrets:
+      github_pat:
+        # Provide a fine-grained token with the following repository permissions:
+        # * Contents: Read and write
+        # * Metadata: Read-only (mandatory, default)
+        # * Pull requests: Read and write
+        description: 'The token used to interact with GitHub'
+        required: true
+
+jobs:
+  prepare_release:
+    name: 'Prepare Release'
+    environment: release
+    runs-on: ubuntu-24.04
+    if: github.repository_owner == inputs.allowed_owner
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base-branch }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: bundle environment
+        run: |
+          bundle list
+
+      - name: Update to new version
+        run: |
+          bundle exec rake vox:version:bump:full[${{ inputs.version }}]
+
+      - name: Prepare the release
+        env:
+          # https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication
+          CHANGELOG_GITHUB_TOKEN: '${{ secrets.github_pat }}'
+        run: bundle exec rake release:prepare
+
+      - name: Create pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Release ${{ inputs.version }}"
+          branch: "release-${{ inputs.version }}"
+          delete-branch: true
+          title: "Release ${{ inputs.version }}"
+          labels: skip-changelog
+          token: '${{ secrets.github_pat }}'
+          assignees: '${{ github.triggering_actor }}'
+          body: |
+            Automated release-prep through https://github.com/OpenVoxProject/shared-actions/ from commit ${{ github.sha }}.
