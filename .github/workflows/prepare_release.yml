@@ -71,5 +71,6 @@ jobs:
           labels: skip-changelog
           token: '${{ secrets.github_pat }}'
           assignees: '${{ github.triggering_actor }}'
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           body: |
             Automated release-prep through https://github.com/OpenVoxProject/shared-actions/ from commit ${{ github.sha }}.
