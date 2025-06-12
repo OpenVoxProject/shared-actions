@@ -1,0 +1,77 @@
+on:
+  workflow_call:
+    inputs:
+      allowed_owner:
+        description: 'Only allow this owner'
+        required: true
+        type: string
+      version:
+        description: 'Version to be released.'
+        required: false
+        default: ''
+        type: string
+      base-branch:
+        description: 'The branch that will be used as the origin for the release branch.'
+        required: false
+        default: ''
+        type: string
+    secrets:
+      github_pat:
+        # Provide a fine-grained token with the following repository permissions:
+        # * Contents: Read and write
+        # * Metadata: Read-only (mandatory, default)
+        # * Pull requests: Read and write
+        description: 'The token used to interact with GitHub'
+        required: true
+
+jobs:
+  release:
+    name: 'Release'
+    environment: release
+    runs-on: ubuntu-24.04
+    if: github.repository_owner == inputs.allowed_owner
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base-branch }}
+          token: ${{ secrets.github_pat }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: bundle environment
+        run: |
+          bundle list
+
+      - name: Check that the code version match the version we release
+        run: |
+          bundle exec rake vox:version:bump:full[${{ inputs.version }}]
+          git diff --exit-code
+
+      - name: Do the release
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: ${{ inputs.version }}
+          create_git_tag_only: true
+
+      - name: Compute the next RC version
+        id: future_version
+        run: |
+          ruby -e 'c = "${{ inputs.version }}".split("."); c[2].succ!; puts "version=#{c[0..2].join(".")}.rc0"' >> "$GITHUB_OUTPUT"
+
+      - name: Bump version to avoid confusion with code older that the tag
+        run: |
+          bundle exec rake vox:version:bump:full[${{ steps.future_version.outputs.version }}]
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          commit_message: "Bump version to ${{ steps.future_version.outputs.version }}"
