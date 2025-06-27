@@ -82,7 +82,7 @@ jobs:
           git diff --exit-code
 
       - name: Do the release
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
           commit_user_email: ${{ env.GIT_COMMITTER_EMAIL }}
@@ -110,7 +110,7 @@ jobs:
           bundle exec rake vox:version:bump:full[${{ steps.future_version.outputs.version }}]
 
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
           commit_user_email: ${{ env.GIT_COMMITTER_EMAIL }}
