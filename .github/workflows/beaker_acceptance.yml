@@ -3,15 +3,21 @@ name: Run Beaker acceptance tests on an OpenVox project
 on:
   workflow_call:
     inputs:
+      project-name:
+        description: The OpenVox project to test.
+        required: true
+        type: string
       ref:
         description: |-
           The git ref of the project-name Beaker test suite to run.
         required: true
         type: string
-      project-name:
-        description: The OpenVox project to test.
+      fork:
+        description: |-
+          The github fork of the project-name Beaker test suite to run.
         required: true
         type: string
+        default: openvoxproject
       install-openvox:
         description: |-
           Whether or not to install any openvox packages on the
@@ -280,7 +286,7 @@ jobs:
           # Ensure that we checkout the project we want to test rather
           # than the repository that this workflow is being called
           # from.
-          repository: ${{ format('openvoxproject/{0}', inputs.project-name) }}
+          repository: ${{ format('{0}/{1}', inputs.fork, inputs.project-name) }}
           ref: ${{ inputs.ref }}
           path: ${{ inputs.project-name }}
 
