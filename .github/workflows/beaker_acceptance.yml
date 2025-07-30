@@ -190,11 +190,13 @@ on:
           os-add parameter.
         required: false
         type: string
+        # NOTE: debian-11 has been removed from this list until
+        # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1109866 is
+        # resolved and the image is functional again.
         default: |-
           [
             ["almalinux", "8"],
             ["almalinux", "9"],
-            ["debian", "11"],
             ["debian", "12"],
             ["rocky", "8"],
             ["rocky", "9"],
