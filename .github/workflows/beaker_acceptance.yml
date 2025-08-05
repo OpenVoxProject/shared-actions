@@ -70,7 +70,7 @@ on:
           If true, the openvox-server package will be installed on any
           node in vms with the role 'primary'.
         required: false
-        type: boolean
+        type: string
       openvox-server-version:
         description: |-
           The version of the openvox-server package to install.
@@ -91,7 +91,7 @@ on:
           If true, the openvoxdb package will be installed on any node
           in vms with the role 'primary'.
         required: false
-        type: boolean
+        type: string
       openvoxdb-version:
         description: |-
           The version of the openvoxdb package to install.
@@ -493,7 +493,7 @@ jobs:
           OPENVOX_AGENT_RELEASED: |-
             ${{ !inputs.openvox-agent-pre-release-build }}
           OPENVOX_SERVER_TARGETS: |-
-            ${{ ((needs.set-project-defaults.outputs.install-openvox-server == true) && '"primary"') ||
+            ${{ ((fromJson(needs.set-project-defaults.outputs.install-openvox-server) == true) && '"primary"') ||
                   '[]' }}
           OPENVOX_SERVER_VERSION: |-
             ${{ ((inputs.openvox-server-version == '') && 'latest') ||
@@ -501,7 +501,7 @@ jobs:
           OPENVOX_SERVER_RELEASED: |-
             ${{ !inputs.openvox-server-pre-release-build }}
           OPENVOX_DB_TARGETS: |-
-            ${{ ((needs.set-project-defaults.outputs.install-openvoxdb == true) && '"primary"') ||
+            ${{ ((fromJson(needs.set-project-defaults.outputs.install-openvoxdb) == true) && '"primary"') ||
                  '[]' }}
           OPENVOX_DB_VERSION: |-
             ${{ ((inputs.openvoxdb-version == '') && 'latest') ||
