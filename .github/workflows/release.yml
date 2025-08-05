@@ -43,6 +43,10 @@ jobs:
     if: github.repository_owner == inputs.allowed_owner
     steps:
 
+      - name: Make sure inputs.version looks like a valid Semantic Version or Calendar Version
+        run: |
+          echo "${{ inputs.version }}" | grep -E '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}-[[:digit:]]$'
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -54,7 +58,6 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: ${{ inputs.working-directory }}
 
       - name: Add SSH key
         run: |
