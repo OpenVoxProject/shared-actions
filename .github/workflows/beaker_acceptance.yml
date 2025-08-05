@@ -71,7 +71,6 @@ on:
           node in vms with the role 'primary'.
         required: false
         type: boolean
-        default: true
       openvox-server-version:
         description: |-
           The version of the openvox-server package to install.
@@ -93,7 +92,6 @@ on:
           in vms with the role 'primary'.
         required: false
         type: boolean
-        default: false
       openvoxdb-version:
         description: |-
           The version of the openvoxdb package to install.
@@ -140,7 +138,6 @@ on:
           project root.
         required: false
         type: string
-        default: 'acceptance'
       acceptance-pre-suite:
         description: |-
           JSON array of Beaker pre-suite files to run.
@@ -149,7 +146,6 @@ on:
           If not provided, no pre-suite will be run.
         required: false
         type: string
-        default: '[]'
       acceptance-tests:
         description: |-
           JSON array of Beaker test files to run.
@@ -158,7 +154,6 @@ on:
           If not provided, no tests will be run.
         required: false
         type: string
-        default: '[]'
       beaker-options:
         description: |-
           A JSON hash of Beaker options to be included in the
@@ -168,7 +163,6 @@ on:
           and 'options_file', among others.
         required: false
         type: string
-        default: '{}'
       os:
         description: |-
           JSON array of operating systems to run the tests on.
@@ -190,17 +184,6 @@ on:
           os-add parameter.
         required: false
         type: string
-        default: |-
-          [
-            ["almalinux", "8"],
-            ["almalinux", "9"],
-            ["debian", "11"],
-            ["debian", "12"],
-            ["rocky", "8"],
-            ["rocky", "9"],
-            ["ubuntu", "22.04"],
-            ["ubuntu", "24.04"]
-          ]
       os-add:
         description: |-
           Additional operating systems to run the tests on.
@@ -208,7 +191,6 @@ on:
           If provided, these will be added to the end of the os matrix.
         required: false
         type: string
-        default: '[]'
       vms:
         description: |-
           JSON array of virtual machine descriptions to create for the
@@ -229,31 +211,225 @@ on:
             being sufficient.)
         required: false
         type: string
-        default: |-
-          [
-            {
-              "role": "agent",
-              "count": 1,
-              "cpus": 2,
-              "mem_mb": 4096,
-              "cpu_mode": "host-model"
-            }
-          ]
 
 env:
   # Suppress warnings about Bolt gem versus package use.
   BOLT_GEM: true
 
 jobs:
+  set-project-defaults:
+    runs-on: ubuntu-24.04
+    outputs:
+      install-openvox-server: ${{ steps.set-defaults.outputs.install_openvox_server }}
+      install-openvoxdb: ${{ steps.set-defaults.outputs.install_openvoxdb }}
+      acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
+      acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
+      acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
+      beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
+      os: ${{ steps.set-defaults.outputs.os }}
+      os-add: ${{ steps.set-defaults.outputs.os_add }}
+      vms: ${{ steps.set-defaults.outputs.vms }}
+    steps:
+      - id: set-defaults
+        env:
+          PROJECT_NAME: ${{ inputs.project-name }}
+          INSTALL_OPENVOX_SERVER: ${{ inputs.install-openvox-server }}
+          INSTALL_OPENVOX_DB: ${{ inputs.install-openvoxdb }}
+          ACCEPTANCE_WORKING_DIR: ${{ inputs.acceptance-working-dir }}
+          ACCEPTANCE_PRE_SUITE: ${{ inputs.acceptance-pre-suite }}
+          ACCEPTANCE_TESTS: ${{ inputs.acceptance-tests }}
+          BEAKER_OPTIONS: ${{ inputs.beaker-options }}
+          OS: ${{ inputs.os }}
+          OS_ADD: ${{ inputs.os-add }}
+          VMS: ${{ inputs.vms }}
+          DEFAULT_OS: |-
+            [
+              ["almalinux", "8"],
+              ["almalinux", "9"],
+              ["debian", "11"],
+              ["debian", "12"],
+              ["rocky", "8"],
+              ["rocky", "9"],
+              ["ubuntu", "22.04"],
+              ["ubuntu", "24.04"]
+            ]
+          PROJECT_DEFAULTS: |-
+            {
+              "openvox": {
+                "install-openvox-server": true,
+                "install-openvoxdb": false,
+                "acceptance-working-dir": "acceptance",
+                "acceptance-pre-suite": [
+                  "pre-suite"
+                ],
+                "acceptance-tests": [
+                  "tests"
+                ],
+                "beaker-options": {
+                  "helper":       "lib/helper.rb",
+                  "options_file": "config/aio/options.rb"
+                },
+                "os-add": [],
+                "vms": [
+                  {
+                    "role": "primary",
+                    "count": 1,
+                    "cpus": 4,
+                    "mem_mb": 8192,
+                    "cpu_mode": "host-model"
+                  }
+                ]
+              },
+              "openvox-agent": {
+                "install-openvox-server": false,
+                "install-openvoxdb": false,
+                "acceptance-working-dir": "acceptance",
+                "acceptance-pre-suite": [
+                  "pre-suite/configure_type_defaults.rb"
+                ],
+                "acceptance-tests": [
+                  "tests"
+                ],
+                "beaker-options": {
+                  "helper":       "lib/helper.rb"
+                },
+                "os-add": [
+                  ["debian", "13", "amd64", "daily-latest"]
+                ],
+                "vms": [
+                  {
+                    "role": "agent",
+                    "count": 1,
+                    "cpus": 2,
+                    "mem_mb": 4096,
+                    "cpu_mode": "host-model"
+                  }
+                ]
+              },
+              "openvox-server": {
+                "install-openvox-server": true,
+                "install-openvoxdb": true,
+                "acceptance-working-dir": "./",
+                "acceptance-pre-suite": [
+                  "acceptance/suites/pre_suite/openvox/configure_type_defaults.rb",
+                  "acceptance/suites/pre_suite/foss/00_setup_environment.rb",
+                  "acceptance/suites/pre_suite/foss/070_InstallCACerts.rb",
+                  "acceptance/suites/pre_suite/foss/10_update_ca_certs.rb",
+                  "acceptance/suites/pre_suite/foss/15_prep_locales.rb",
+                  "acceptance/suites/pre_suite/foss/71_smoke_test_puppetserver.rb",
+                  "acceptance/suites/pre_suite/foss/80_configure_puppet.rb",
+                  "acceptance/suites/pre_suite/foss/85_configure_sut.rb",
+                  "acceptance/suites/pre_suite/foss/90_validate_sign_cert.rb",
+                  "acceptance/suites/pre_suite/foss/95_install_pdb.rb",
+                  "acceptance/suites/pre_suite/foss/99_collect_data.rb"
+                ],
+                "acceptance-tests": [
+                  "acceptance/suites/tests"
+                ],
+                "beaker-options": {
+                  "helper":       "acceptance/lib/helper.rb",
+                  "load_path":    "acceptance/lib",
+                  "options_file": "acceptance/config/beaker/options.rb"
+                },
+                "os-add": [],
+                "vms": [
+                  {
+                    "role": "primary",
+                    "count": 1,
+                    "cpus": 4,
+                    "mem_mb": 8192,
+                    "cpu_mode": "host-model"
+                  },
+                  {
+                    "role": "agent",
+                    "count": 1,
+                    "cpus": 2,
+                    "mem_mb": 2048,
+                    "cpu_mode": "host-model"
+                  }
+                ]
+              },
+              "openvoxdb": {
+                "install-openvox-server": true,
+                "install-openvoxdb": true,
+                "acceptance-working-dir": "./",
+                "acceptance-pre-suite": [
+                  "acceptance/setup/openvox/configure_type_defaults.rb",
+                  "acceptance/setup/pre_suite/00_setup_test_env.rb",
+                  "acceptance/setup/pre_suite/10_setup_proxies.rb",
+                  "acceptance/setup/pre_suite/15_prep_locales.rb",
+                  "acceptance/setup/pre_suite/20_install_puppet.rb",
+                  "acceptance/setup/pre_suite/30_generate_ssl_certs.rb",
+                  "acceptance/setup/pre_suite/40_install_deps.rb",
+                  "acceptance/setup/pre_suite/50_install_modules.rb",
+                  "acceptance/setup/pre_suite/75_clean_out_puppet5_repos.rb",
+                  "acceptance/setup/pre_suite/80_add_dev_repo.rb",
+                  "acceptance/setup/openvox/configure_openvoxdb.rb"
+                ],
+                "acceptance-tests": [
+                  "acceptance/tests"
+                ],
+                "beaker-options": {
+                  "helper":       "acceptance/helper.rb",
+                  "options_file": "acceptance/options/openvox.rb"
+                },
+                "os-add": [],
+                "vms": [
+                  {
+                    "role": "primary",
+                    "count": 1,
+                    "cpus": 4,
+                    "mem_mb": 8192,
+                    "cpu_mode": "host-model"
+                  },
+                  {
+                    "role": "agent",
+                    "count": 1,
+                    "cpus": 2,
+                    "mem_mb": 2048,
+                    "cpu_mode": "host-model"
+                  }
+                ]
+              }
+            }
+        run: |-
+          # Pick out the defaults for the project being tested.
+          jq ".\"${PROJECT_NAME}\" | .os = ${DEFAULT_OS}" <<< "${PROJECT_DEFAULTS}" > project_defaults.json
+          cat project_defaults.json
+
+          # Provide project defaults where inputs are not set.
+          parameters=(
+            "install-openvox-server"
+            "install-openvoxdb"
+            "acceptance-working-dir"
+            "acceptance-pre-suite"
+            "acceptance-tests"
+            "beaker-options"
+            "os"
+            "os-add"
+            "vms"
+          )
+          for param in "${parameters[@]}"; do
+            output_name=${param//-/_}
+            env_input_name=${output_name^^}
+            default=$(jq -rMc ".\"${param}\"" project_defaults.json)
+            value=${!env_input_name:-$default}
+            # Since the value of env_input_name could be a mutli-line
+            # string from inputs, we'll use jq again to ensure we
+            # produce something output can handle.
+            echo "${output_name}=$(jq -rMc <<<"${value}")" >> $GITHUB_OUTPUT
+          done
+
   set-matrix:
+    needs: set-project-defaults
     runs-on: ubuntu-24.04
     outputs:
       os-matrix: ${{ steps.set-matrix.outputs.os_matrix }}
     steps:
       - id: set-matrix
         env:
-          OS: ${{ inputs.os }}
-          OS_ADD: ${{ inputs.os-add }}
+          OS: ${{ needs.set-project-defaults.outputs.os }}
+          OS_ADD: ${{ needs.set-project-defaults.outputs.os-add }}
         run: |-
           cat > matrix_inputs.json <<EOF
           [
@@ -266,7 +442,7 @@ jobs:
 
   acceptance:
     name: Acceptance Tests
-    needs: set-matrix
+    needs: [set-project-defaults, set-matrix]
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -277,7 +453,7 @@ jobs:
         ${{ format('{0}/{1}/{2}',
                    github.workspace,
                    inputs.project-name,
-                   inputs.acceptance-working-dir) }}
+                   needs.set-project-defaults.outputs.acceptance-working-dir) }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -302,7 +478,7 @@ jobs:
           # the runner's architecture being sufficient, and there is
           # probably a better way to get this set on the libvirt
           # domain instead.
-          vms: ${{ inputs.vms }}
+          vms: ${{ needs.set-project-defaults.outputs.vms }}
 
       - name: Write Install OpenVox Params
         working-directory: kvm_automation_tooling
@@ -317,7 +493,7 @@ jobs:
           OPENVOX_AGENT_RELEASED: |-
             ${{ !inputs.openvox-agent-pre-release-build }}
           OPENVOX_SERVER_TARGETS: |-
-            ${{ ((inputs.install-openvox-server == true) && '"primary"') ||
+            ${{ ((needs.set-project-defaults.outputs.install-openvox-server == true) && '"primary"') ||
                   '[]' }}
           OPENVOX_SERVER_VERSION: |-
             ${{ ((inputs.openvox-server-version == '') && 'latest') ||
@@ -325,7 +501,7 @@ jobs:
           OPENVOX_SERVER_RELEASED: |-
             ${{ !inputs.openvox-server-pre-release-build }}
           OPENVOX_DB_TARGETS: |-
-            ${{ ((inputs.install-openvoxdb == true) && '"primary"') ||
+            ${{ ((needs.set-project-defaults.outputs.install-openvoxdb == true) && '"primary"') ||
                  '[]' }}
           OPENVOX_DB_VERSION: |-
             ${{ ((inputs.openvoxdb-version == '') && 'latest') ||
@@ -405,11 +581,11 @@ jobs:
           # Generated by the nested_vms action.
           SSH_KEY: ~/.ssh/ssh-id-test
           PRE_SUITE_ARRAY: |-
-            ${{ inputs.acceptance-pre-suite || '[]' }}
+            ${{ needs.set-project-defaults.outputs.acceptance-pre-suite || '[]' }}
           TESTS_ARRAY: |-
-            ${{ inputs.acceptance-tests || '[]' }}
+            ${{ needs.set-project-defaults.outputs.acceptance-tests || '[]' }}
           BEAKER_OPTIONS: |-
-            ${{ inputs.beaker-options || '{}' }}
+            ${{ needs.set-project-defaults.outputs.beaker-options || '{}' }}
         run: |-
           cat > beaker.yml.inputs <<EOF
           [
