@@ -18,23 +18,6 @@ on:
         required: false
         type: string
         default: openvoxproject
-      install-openvox:
-        description: |-
-          Whether or not to install any openvox packages on the
-          virtual machines created for the tests.
-
-          If true, then openvox-agent packages will be installed on
-          all nodes listed in the vms input, and openvox-server and
-          openvoxdb packages may be installed depending on the
-          install-openvox-server and install-openvoxdb flags, and on
-          whether the vms input has a node in the 'primary' role.
-
-          If false, then no openvox packages will be installed,
-          regardless of the install-openvox-server or
-          install-openvoxdb flags.
-        required: false
-        type: boolean
-        default: true
       openvox-collection:
         description: |-
           The OpenVox collection to install from.
@@ -65,12 +48,6 @@ on:
         required: false
         type: boolean
         default: true
-      install-openvox-server:
-        description: |-
-          If true, the openvox-server package will be installed on any
-          node in vms with the role 'primary'.
-        required: false
-        type: string
       openvox-server-version:
         description: |-
           The version of the openvox-server package to install.
@@ -86,12 +63,6 @@ on:
         required: false
         type: boolean
         default: true
-      install-openvoxdb:
-        description: |-
-          If true, the openvoxdb package will be installed on any node
-          in vms with the role 'primary'.
-        required: false
-        type: string
       openvoxdb-version:
         description: |-
           The version of the openvoxdb package to install.
@@ -107,15 +78,6 @@ on:
         required: false
         type: boolean
         default: true
-      install-openvoxdb-termini:
-        description: |-
-          In a production installation using openvoxdb, the
-          openvoxdb-termini package is installed alongside
-          openvox-server. Set this to false to install just
-          openvox-server without the openvoxdb-termini.
-        required: false
-        type: boolean
-        default: true
       artifacts-url:
         description: |-
           URL to the artifacts server. This is used to download
@@ -124,97 +86,14 @@ on:
         required: false
         type: string
         default: 'https://s3.osuosl.org/openvox-artifacts'
-      ruby-version:
-        description: |-
-          The Ruby version to use for the project being tested.
-          This is used to install Ruby and run Bundler when
-          running the project's Beaker acceptance suite.
-        required: false
-        type: string
-        default: '3.3'
-      acceptance-working-dir:
-        description: |-
-          The working directory for the acceptance tests, relative to
-          project root.
-        required: false
-        type: string
-      acceptance-pre-suite:
-        description: |-
-          JSON array of Beaker pre-suite files to run.
-          These should be relative to the acceptance-working-dir, or
-          absolute paths.
-          If not provided, no pre-suite will be run.
-        required: false
-        type: string
-      acceptance-tests:
-        description: |-
-          JSON array of Beaker test files to run.
-          These should be relative to the acceptance-working-dir, or
-          absolute paths.
-          If not provided, no tests will be run.
-        required: false
-        type: string
-      beaker-options:
-        description: |-
-          A JSON hash of Beaker options to be included in the
-          .beaker.yml generated for the test suite run.
-
-          This is useful for setting details like 'helper', 'load_path'
-          and 'options_file', among others.
-        required: false
-        type: string
-      os:
-        description: |-
-          JSON array of operating systems to run the tests on.
-          Each entry is an array of minimally [os, os-version],
-          with os-arch and image_version as optional third and fourth
-          elements.
-
-          The elements are passed to jpartlow/nested_vms os,
-          os-version, os-arch and image_version inputs.
-
-          Ex:
-            [
-              ["almalinux", "8"],
-              ["debian", "12", "amd64", "daily-latest"]
-            ]
-
-          Generally the default array can be used, and
-          additional operating systems can be specified with the
-          os-add parameter.
-        required: false
-        type: string
-      os-add:
-        description: |-
-          Additional operating systems to run the tests on.
-          This is a JSON array of the same format as the os input.
-          If provided, these will be added to the end of the os matrix.
-        required: false
-        type: string
-      vms:
-        description: |-
-          JSON array of virtual machine descriptions to create for the
-          tests. This is passed to the jpartlow/nested_vms action and
-          is in a format handled by jpartlow/kvm_automation_tooling's
-          standup_cluster plan.
-
-          Each entry is an object with the following properties:
-          - role: The role of the VM (e.g., "agent").
-          - count: The number of VMs to create for this role.
-          - cpus: The number of CPUs to allocate to each VM.
-          - mem_mb: The amount of memory (in MB) to allocate to each VM.
-          - disk_gb: The amount of disk space (in GB) to allocate to
-            each VM.
-          - cpu_mode: The CPU mode to use for the VM (e.g.,
-            "host-model"). (Necessary for el-9 which expects at least
-            x86_64-2 arch, and depends on the runner's architecture
-            being sufficient.)
-        required: false
-        type: string
 
 env:
   # Suppress warnings about Bolt gem versus package use.
   BOLT_GEM: true
+  # The Ruby version to use for the project being tested.
+  # This is used to install Ruby and run Bundler when
+  # running the project's Beaker acceptance suite.
+  RUBY_VERSION: '3.3'
 
 jobs:
   set-project-defaults:
@@ -233,15 +112,6 @@ jobs:
       - id: set-defaults
         env:
           PROJECT_NAME: ${{ inputs.project-name }}
-          INSTALL_OPENVOX_SERVER: ${{ inputs.install-openvox-server }}
-          INSTALL_OPENVOX_DB: ${{ inputs.install-openvoxdb }}
-          ACCEPTANCE_WORKING_DIR: ${{ inputs.acceptance-working-dir }}
-          ACCEPTANCE_PRE_SUITE: ${{ inputs.acceptance-pre-suite }}
-          ACCEPTANCE_TESTS: ${{ inputs.acceptance-tests }}
-          BEAKER_OPTIONS: ${{ inputs.beaker-options }}
-          OS: ${{ inputs.os }}
-          OS_ADD: ${{ inputs.os-add }}
-          VMS: ${{ inputs.vms }}
           DEFAULT_OS: |-
             [
               ["almalinux", "8"],
@@ -393,11 +263,12 @@ jobs:
               }
             }
         run: |-
+          set -e
+
           # Pick out the defaults for the project being tested.
           jq ".\"${PROJECT_NAME}\" | .os = ${DEFAULT_OS}" <<< "${PROJECT_DEFAULTS}" > project_defaults.json
           cat project_defaults.json
 
-          # Provide project defaults where inputs are not set.
           parameters=(
             "install-openvox-server"
             "install-openvoxdb"
@@ -411,13 +282,9 @@ jobs:
           )
           for param in "${parameters[@]}"; do
             output_name=${param//-/_}
-            env_input_name=${output_name^^}
             default=$(jq -rMc ".\"${param}\"" project_defaults.json)
-            value=${!env_input_name:-$default}
-            # Since the value of env_input_name could be a mutli-line
-            # string from inputs, we'll use jq again to ensure we
-            # produce something output can handle.
-            echo "${output_name}=$(jq -rMc <<<"${value}")" >> $GITHUB_OUTPUT
+            echo "Setting ${output_name} to ${default}"
+            echo "${output_name}=${default}" >> $GITHUB_OUTPUT
           done
 
   set-matrix:
@@ -482,7 +349,6 @@ jobs:
 
       - name: Write Install OpenVox Params
         working-directory: kvm_automation_tooling
-        if: ${{ inputs.install-openvox == true }}
         env:
           OPENVOX_ARTIFACTS_URL: |-
             ${{ inputs.artifacts-url }}
@@ -508,7 +374,7 @@ jobs:
                  inputs.openvoxdb-version }}
           OPENVOX_DB_RELEASED: |-
             ${{ !inputs.openvoxdb-pre-release-build }}
-          INSTALL_TERMINI: ${{ inputs.install-openvoxdb-termini }}
+          INSTALL_TERMINI: true
         run: |-
           cat > install_openvox_params.json <<EOF
           {
@@ -543,7 +409,6 @@ jobs:
 
       - name: Install OpenVox Components
         working-directory: kvm_automation_tooling
-        if: ${{ inputs.install-openvox == true }}
         env:
           # Generated by the nested_vms action.
           INVENTORY: terraform/instances/inventory.test.yaml
@@ -569,7 +434,7 @@ jobs:
       - name: Install Ruby and Run Bundler for Acceptance Tests
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ inputs.ruby-version }}
+          ruby-version: ${{ env.RUBY_VERSION }}
           working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
           bundler-cache: true
 
