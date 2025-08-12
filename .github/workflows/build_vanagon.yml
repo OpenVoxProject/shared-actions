@@ -116,6 +116,10 @@ jobs:
           rm -rf output
           bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
 
+      - name: Cleanup
+        run: |
+          bundle exec rake vox:cleanup['${{ matrix.platform }}']
+
       - name: Upload output to S3
         run: bundle exec rake vox:upload['${{ inputs.ref }}','${{ matrix.platform }}']
   
@@ -156,6 +160,10 @@ jobs:
         run: |
           rm -rf output
           bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
+
+      - name: Cleanup
+        run: |
+          bundle exec rake vox:cleanup['${{ matrix.platform }}']
 
       - name: Upload output to S3
         run: bundle exec rake vox:upload['${{ inputs.ref }}','${{ matrix.platform }}']
