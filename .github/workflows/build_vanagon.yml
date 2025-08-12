@@ -39,6 +39,7 @@ jobs:
             'amazon-2-x86_64'
             'amazon-2023-aarch64'
             'amazon-2023-x86_64'
+            'debian-10-amd64'
             'debian-11-aarch64'
             'debian-11-amd64'
             'debian-12-aarch64'
@@ -62,6 +63,10 @@ jobs:
             'fedora-43-x86_64'
             'fedora-43-aarch64'
             'sles-15-x86_64'
+            'ubuntu-18.04-aarch64'
+            'ubuntu-18.04-amd64'
+            'ubuntu-20.04-aarch64'
+            'ubuntu-20.04-amd64'
             'ubuntu-22.04-aarch64'
             'ubuntu-22.04-amd64'
             'ubuntu-24.04-aarch64'
@@ -89,21 +94,21 @@ jobs:
     needs: set-matrix
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 600
-    if: needs.set-matrix.outputs.arm_matrix != '[""]'
+    if: ${{ needs.set-matrix.outputs.arm_matrix != '[]' }}
     strategy:
       fail-fast: false
       matrix:
         platform: ${{ fromJSON(needs.set-matrix.outputs.arm_matrix) }}
     steps:
       - name: Checkout code at tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Install Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2.7'
+      #- name: Install Ruby
+      #  uses: ruby/setup-ruby@v1
+      #  with:
+      #    ruby-version: '3.2.7'
 
       - name: Bundle install
         run: bundle install --retry=3
@@ -123,14 +128,14 @@ jobs:
     needs: set-matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 600
-    if: needs.set-matrix.outputs.x86_matrix != '[""]'
+    if: ${{ needs.set-matrix.outputs.x86_matrix != '[]' && !contains(needs.set-matrix.outputs.x86_matrix, 'osx') }}
     strategy:
       fail-fast: false
       matrix:
         platform: ${{ fromJSON(needs.set-matrix.outputs.x86_matrix) }}
     steps:
       - name: Checkout code at tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
 
@@ -156,6 +161,57 @@ jobs:
         run: |
           rm -rf output
           bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
+
+      - name: Upload output to S3
+        run: bundle exec rake vox:upload['${{ inputs.ref }}','${{ matrix.platform }}']
+
+  build_macOS_x86:
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      NO_PXP_AGENT: true
+      SSL_CERT_FILE: '/etc/ssl/cert.pem'
+    needs: set-matrix
+    runs-on: macOS
+    timeout-minutes: 600
+    if: ${{ contains(needs.set-matrix.outputs.x86_matrix, 'osx') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(needs.set-matrix.outputs.x86_matrix) }}
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2.7'
+
+      - name: Bundle install
+        run: bundle install --retry=3
+
+      # Using MacOS default installed python version due to the following error and can't resolve:
+      # Error: ln: python313: Permission denied
+      # Error: The process '/bin/bash' failed with exit code 1
+      #- name: Install Python
+      #  uses: actions/setup-python@v5
+      #  with:
+      #    python-version: '3.13'
+
+      - name: Update awscli
+        run: python3 -m pip install --upgrade awscli
+
+      - name: Run build script
+        run: |
+          rm -rf output
+          bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
+
+      - name: Cleanup
+        run: |
+          bundle exec rake vox:cleanup['${{ matrix.platform }}']
 
       - name: Upload output to S3
         run: bundle exec rake vox:upload['${{ inputs.ref }}','${{ matrix.platform }}']
