@@ -147,15 +147,7 @@ jobs:
       - name: Run build script
         run: |-
           rm -rf output
-          bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
-
-      - name: Install/update awscli
-        run: |-
-          if [[ "${{ matrix.platform }}" == "macos-"* ]]; then
-            brew install --force awscli
-          else
-            python -m pip install --upgrade awscli
-          fi  
+          bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}'] 
 
       - name: Upload output to S3
         env:
