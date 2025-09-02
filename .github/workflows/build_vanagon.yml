@@ -65,6 +65,7 @@ jobs:
             'ubuntu-24.04-amd64'
             'ubuntu-25.04-amd64'
             'ubuntu-25.04-aarch64'
+            'windows-all-x64'
           )
           if [[ -n "${{ inputs.platform_list }}" ]]; then
             IFS=',' read -r -a platforms <<< "${{ inputs.platform_list }}"
@@ -74,38 +75,49 @@ jobs:
 
           build_platforms=()
           for platform in "${platforms[@]}"; do
-            if [[ "$platform" == macos-* ]]; then
-              runner="macos-latest"
-            elif [[ "$platform" == *-aarch64 || "$platform" == *-arm64 ]]; then
-              runner="ubuntu-24.04-arm"
-            else
-              runner="ubuntu-24.04"
-            fi
-            build_platforms+=("{\"platform\":\"$platform\",\"runner\":\"$runner\"}")
+            case "$platform" in
+              macos-*-x86_64)
+                runner="macos-latest"
+                shell="arch -x86_64 /bin/bash -e {0}"
+                ;;
+              macos-*-arm64)
+                runner="macos-latest"
+                shell="bash"
+                ;;
+              windows-*)
+                runner="windows-latest"
+                # igncr is required so that Cygwin doesn't get confused by Windows line endings
+                shell="C:/cygwin64/bin/bash.exe -eo pipefail -o igncr '{0}'"
+                ;;
+              *-aarch64 | *-arm64)
+                runner="ubuntu-24.04-arm"
+                shell="bash"
+                ;;
+              *)
+                runner="ubuntu-24.04"
+                shell="bash"
+                ;;
+            esac
+            build_platforms+=("{\"platform\":\"$platform\",\"runner\":\"$runner\",\"shell\":\"$shell\"}")
           done
           matrix_json="[$(IFS=','; echo "${build_platforms[*]}")]"
           echo "build_matrix=$matrix_json" >> "${GITHUB_OUTPUT}"
 
   build:
     needs: set-matrix
-    runs-on: ${{ matrix.runner }}
     timeout-minutes: 600
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.set-matrix.outputs.build_matrix) }}
+    runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        shell: ${{ matrix.platform == 'macos-all-x86_64' && 'arch -x86_64 /bin/bash -e {0}' || 'bash' }}
+        shell: ${{ matrix.shell }}
 
     steps:
-      - name: Checkout code at tag
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.ref }}
-
-      - name: Install Ruby
-        if: ${{ matrix.platform != 'macos-all-x86_64' }}
+      - name: Install Ruby (except Windows and macos-all-x86_64)
+        if: ${{ matrix.platform != 'macos-all-x86_64' && ! startsWith(matrix.platform, 'windows') }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
@@ -140,7 +152,30 @@ jobs:
           echo "${HOMEBREW_PREFIX}/sbin" >> $GITHUB_PATH
           echo '/usr/local/opt/ruby@3.2/bin' >> $GITHUB_PATH
           echo '/usr/local/lib/ruby/gems/3.2.0/bin' >> $GITHUB_PATH
-          
+
+      - name: Set git params for Windows
+        if: ${{ startsWith(matrix.platform, 'windows') }}
+        shell: pwsh
+        run: |
+          # Without this, patch.exe fails due to line ending differences
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: Checkout code at tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install Cygwin and bootstrap dependencies (Windows only)
+        if: ${{ startsWith(matrix.platform, 'windows') }}
+        shell: pwsh
+        run: |
+          .\setup.ps1
+          # This is to make sure Cygwin binaries are used over preinstalled items
+          echo "C:\cygwin64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # This is to fix file permissions issues when we check out code outside of Cygwin
+          echo "none /cygdrive cygdrive binary,noacl,posix=0,user 0 0" | Out-File -FilePath C:\cygwin64\etc\fstab -Encoding ASCII
+
       - name: Bundle install
         run: bundle install --retry=3
 
