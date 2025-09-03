@@ -165,6 +165,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0 # So we fetch all history and tags and can build non-tagged versions
 
       - name: Install Cygwin and bootstrap dependencies (Windows only)
         if: ${{ startsWith(matrix.platform, 'windows') }}
