@@ -184,6 +184,12 @@ jobs:
           rm -rf output
           bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}'] 
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ inputs.ref }}-${{ matrix.platform }}
+          path: output/
+
       - name: Upload output to S3
         env:
           ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
