@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: 'main'
+      working_directory:
+        description: 'The directory inside the repo containing the vanagon project. For repos that are specifically vanagon projects, leave this as default.'
+        required: false
+        type: string
+        default: '.'
 
 env:
   VANAGON_LOCATION: "https://github.com/openvoxproject/vanagon#${{ inputs.vanagon_branch }}"
@@ -170,6 +175,7 @@ jobs:
       - name: Install Cygwin and bootstrap dependencies (Windows only)
         if: ${{ startsWith(matrix.platform, 'windows') }}
         shell: pwsh
+        working-directory: ${{ inputs.working_directory }}
         run: |
           .\setup.ps1
           # This is to make sure Cygwin binaries are used over preinstalled items
@@ -178,10 +184,12 @@ jobs:
           echo "none /cygdrive cygdrive binary,noacl,posix=0,user 0 0" | Out-File -FilePath C:\cygwin64\etc\fstab -Encoding ASCII
 
       - name: Bundle install
+        working-directory: ${{ inputs.working_directory }}
         run: bundle install --retry=3
 
       - name: Run build script and save git describe
         id: build
+        working-directory: ${{ inputs.working_directory }}
         run: |-
           rm -rf output
           DESCRIBE=$(git describe --abbrev=9)
@@ -192,9 +200,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-${{ steps.build.outputs.describe }}-${{ matrix.platform }}
-          path: output/
+          path: ${{ inputs.working_directory }}/output/
 
       - name: Upload output to S3
+        working-directory: ${{ inputs.working_directory }}
         env:
           ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
           BUCKET_NAME: ${{ secrets.S3_ARTIFACTS_BUCKET_NAME }}
