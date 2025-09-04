@@ -180,15 +180,18 @@ jobs:
       - name: Bundle install
         run: bundle install --retry=3
 
-      - name: Run build script
+      - name: Run build script and save git describe
+        id: build
         run: |-
           rm -rf output
+          DESCRIBE=$(git describe --abbrev=9)
+          echo "describe=${DESCRIBE//-/.}" >> $GITHUB_OUTPUT
           bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}'] 
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts-${{ inputs.ref }}-${{ matrix.platform }}
+          name: build-artifacts-${{ steps.build.outputs.describe }}-${{ matrix.platform }}
           path: output/
 
       - name: Upload output to S3
@@ -200,4 +203,4 @@ jobs:
           # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
           AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
           AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
-        run: bundle exec rake vox:upload['${{ inputs.ref }}','${{ matrix.platform }}']
+        run: bundle exec rake vox:upload['${{ steps.build.outputs.describe }}','${{ matrix.platform }}']
