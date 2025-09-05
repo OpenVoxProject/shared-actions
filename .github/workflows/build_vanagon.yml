@@ -182,7 +182,12 @@ jobs:
           echo "C:\cygwin64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           # This is to fix file permissions issues when we check out code outside of Cygwin
           echo "none /cygdrive cygdrive binary,noacl,posix=0,user 0 0" | Out-File -FilePath C:\cygwin64\etc\fstab -Encoding ASCII
-
+          # This is so that Puppet doesn't throw up when we look up Puppet.version in the
+          # openvox repo. It will think it is in a posix environment, but it should not
+          # matter for any other part of the build process.
+          # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
+          echo "root:*:0:0:::" | Out-File -FilePath C:\cygwin64\etc\passwd -Encoding ASCII
+      
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
         run: bundle install --retry=3
