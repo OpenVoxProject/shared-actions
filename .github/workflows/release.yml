@@ -45,7 +45,9 @@ jobs:
 
       - name: Make sure inputs.version looks like a valid Semantic Version or Calendar Version
         run: |
-          echo "${{ inputs.version }}" | grep -E '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}-[[:digit:]]$'
+          # Agent/Server look like 8.23.0-1 or just 8.23.0
+          # puppet-runtime looks like 2025.09.08.1
+          echo "${{ inputs.version }}" | grep -E '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'
 
       - name: Checkout repository
         uses: actions/checkout@v5
