@@ -3,18 +3,18 @@ name: Run Beaker acceptance tests on an OpenVox project
 on:
   workflow_call:
     inputs:
-      project-name:
-        description: The OpenVox project to test.
+      suite-name:
+        description: The identifier of the Beaker test suite to run.
         required: true
         type: string
       ref:
         description: |-
-          The git ref of the project-name Beaker test suite to run.
+          The git ref of the suite-name repository to checkout and run.
         required: true
         type: string
       fork:
         description: |-
-          The github fork of the project-name Beaker test suite to run.
+          The github fork of the suite-name repository to checkout and run.
         required: false
         type: string
         default: openvoxproject
@@ -99,6 +99,7 @@ jobs:
   set-project-defaults:
     runs-on: ubuntu-24.04
     outputs:
+      repository: ${{ steps.set-defaults.outputs.repository }}
       install-openvox-server: ${{ steps.set-defaults.outputs.install_openvox_server }}
       install-openvoxdb: ${{ steps.set-defaults.outputs.install_openvoxdb }}
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
@@ -111,7 +112,7 @@ jobs:
     steps:
       - id: set-defaults
         env:
-          PROJECT_NAME: ${{ inputs.project-name }}
+          SUITE_NAME: ${{ inputs.suite-name }}
           DEFAULT_OS: |-
             [
               ["almalinux", "8"],
@@ -126,6 +127,7 @@ jobs:
           PROJECT_DEFAULTS: |-
             {
               "openvox": {
+                "repository": "openvox",
                 "install-openvox-server": true,
                 "install-openvoxdb": false,
                 "acceptance-working-dir": "acceptance",
@@ -151,9 +153,10 @@ jobs:
                 ]
               },
               "openvox-agent": {
+                "repository": "openvox",
                 "install-openvox-server": false,
                 "install-openvoxdb": false,
-                "acceptance-working-dir": "acceptance",
+                "acceptance-working-dir": "packaging/acceptance",
                 "acceptance-pre-suite": [
                   "pre-suite/configure_type_defaults.rb"
                 ],
@@ -177,6 +180,7 @@ jobs:
                 ]
               },
               "openvox-server": {
+                "repository": "openvox-server",
                 "install-openvox-server": true,
                 "install-openvoxdb": true,
                 "acceptance-working-dir": "./",
@@ -220,6 +224,7 @@ jobs:
                 ]
               },
               "openvoxdb": {
+                "repository": "openvoxdb",
                 "install-openvox-server": true,
                 "install-openvoxdb": true,
                 "acceptance-working-dir": "./",
@@ -266,10 +271,11 @@ jobs:
           set -e
 
           # Pick out the defaults for the project being tested.
-          jq ".\"${PROJECT_NAME}\" | .os = ${DEFAULT_OS}" <<< "${PROJECT_DEFAULTS}" > project_defaults.json
+          jq ".\"${SUITE_NAME}\" | .os = ${DEFAULT_OS}" <<< "${PROJECT_DEFAULTS}" > project_defaults.json
           cat project_defaults.json
 
           parameters=(
+            "repository"
             "install-openvox-server"
             "install-openvoxdb"
             "acceptance-working-dir"
@@ -319,7 +325,7 @@ jobs:
       ACCEPTANCE_WORKING_DIR: |-
         ${{ format('{0}/{1}/{2}',
                    github.workspace,
-                   inputs.project-name,
+                   needs.set-project-defaults.outputs.repository,
                    needs.set-project-defaults.outputs.acceptance-working-dir) }}
     steps:
       - uses: actions/checkout@v5
@@ -327,9 +333,9 @@ jobs:
           # Ensure that we checkout the project we want to test rather
           # than the repository that this workflow is being called
           # from.
-          repository: ${{ format('{0}/{1}', inputs.fork, inputs.project-name) }}
+          repository: ${{ format('{0}/{1}', inputs.fork, needs.set-project-defaults.outputs.repository) }}
           ref: ${{ inputs.ref }}
-          path: ${{ inputs.project-name }}
+          path: ${{ needs.set-project-defaults.outputs.repository }}
 
       - id: vm-cluster
         uses: jpartlow/nested_vms@v1
