@@ -130,6 +130,7 @@ jobs:
                 "repository": "openvox",
                 "install-openvox-server": true,
                 "install-openvoxdb": false,
+                "install-termini": false,
                 "acceptance-working-dir": "acceptance",
                 "acceptance-pre-suite": [
                   "pre-suite"
@@ -156,6 +157,7 @@ jobs:
                 "repository": "openvox",
                 "install-openvox-server": false,
                 "install-openvoxdb": false,
+                "install-termini": false,
                 "acceptance-working-dir": "packaging/acceptance",
                 "acceptance-pre-suite": [
                   "pre-suite/configure_type_defaults.rb"
@@ -183,6 +185,7 @@ jobs:
                 "repository": "openvox-server",
                 "install-openvox-server": true,
                 "install-openvoxdb": true,
+                "install-termini": true,
                 "acceptance-working-dir": "./",
                 "acceptance-pre-suite": [
                   "acceptance/suites/pre_suite/openvox/configure_type_defaults.rb",
@@ -227,6 +230,7 @@ jobs:
                 "repository": "openvoxdb",
                 "install-openvox-server": true,
                 "install-openvoxdb": true,
+                "install-termini": true,
                 "acceptance-working-dir": "./",
                 "acceptance-pre-suite": [
                   "acceptance/setup/openvox/configure_type_defaults.rb",
@@ -278,6 +282,7 @@ jobs:
             "repository"
             "install-openvox-server"
             "install-openvoxdb"
+            "install-termini"
             "acceptance-working-dir"
             "acceptance-pre-suite"
             "acceptance-tests"
@@ -380,7 +385,8 @@ jobs:
                  inputs.openvoxdb-version }}
           OPENVOX_DB_RELEASED: |-
             ${{ !inputs.openvoxdb-pre-release-build }}
-          INSTALL_TERMINI: true
+          INSTALL_TERMINI: |-
+            ${{ needs.set-project-defaults.outputs.install-termini }}
         run: |-
           cat > install_openvox_params.json <<EOF
           {
