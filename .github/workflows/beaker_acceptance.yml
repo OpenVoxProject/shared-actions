@@ -102,6 +102,7 @@ jobs:
       repository: ${{ steps.set-defaults.outputs.repository }}
       install-openvox-server: ${{ steps.set-defaults.outputs.install_openvox_server }}
       install-openvoxdb: ${{ steps.set-defaults.outputs.install_openvoxdb }}
+      install-termini: ${{ steps.set-defaults.outputs.install_termini }}
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
       acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
       acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
