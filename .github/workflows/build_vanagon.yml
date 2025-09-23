@@ -165,7 +165,7 @@ jobs:
       
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
-        run: bundle clean --force && bundle install --retry=3
+        run: bundle install --retry=3
 
       - name: Run build script and save git describe
         id: build
