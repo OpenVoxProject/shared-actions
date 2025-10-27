@@ -207,7 +207,7 @@ jobs:
           bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}'] 
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-artifacts-${{ steps.build.outputs.describe }}-${{ matrix.platform }}
           path: ${{ inputs.working_directory }}/output/
