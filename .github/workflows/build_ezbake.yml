@@ -47,7 +47,7 @@ jobs:
       # This always checks out main, because the vox:build task will check
       # out the tag itself.
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: 'main'
 

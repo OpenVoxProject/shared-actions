@@ -334,7 +334,7 @@ jobs:
                    needs.set-project-defaults.outputs.repository,
                    needs.set-project-defaults.outputs.acceptance-working-dir) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           # Ensure that we checkout the project we want to test rather
           # than the repository that this workflow is being called
