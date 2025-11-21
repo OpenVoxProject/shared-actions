@@ -52,7 +52,7 @@ jobs:
           echo "${{ inputs.version }}" | grep -E '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.base-branch }}
 

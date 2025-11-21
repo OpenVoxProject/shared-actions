@@ -172,7 +172,7 @@ jobs:
           git config --global core.eol lf
 
       - name: Checkout code at tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0 # So we fetch all history and tags and can build non-tagged versions
