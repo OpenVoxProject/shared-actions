@@ -55,6 +55,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.base-branch }}
+          fetch-depth: 0 # Required so that vanagon doesn't throw up with no tags present
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
