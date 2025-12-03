@@ -1,17 +1,11 @@
----
 name: 'Prepare Release'
 
 on:
   workflow_call:
     inputs:
-      allowed_owner:
-        description: 'Only allow this owner'
-        required: true
-        type: string
       version:
         description: 'Version to be released.'
-        required: false
-        default: ''
+        required: true
         type: string
       base-branch:
         description: 'The branch that will be used as the origin for the release branch.'
@@ -43,19 +37,23 @@ jobs:
     name: 'Prepare Release'
     environment: release
     runs-on: ubuntu-24.04
-    if: github.repository_owner == inputs.allowed_owner
+    if: github.repository_owner == 'OpenVoxProject'
     steps:
-      - name: Make sure inputs.version looks like a valid Semantic Version or Calendar Version
+      - name: Validate version format
         run: |
           # Agent/Server look like 8.23.0-1 or just 8.23.0
           # puppet-runtime looks like 2025.09.08.1
-          echo "${{ inputs.version }}" | grep -E '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'
+          if ! echo "${{ inputs.version }}" | grep -qE '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'; then
+            echo "::error::Version '${{ inputs.version }}' does not match expected format (semver like 8.23.0 or calver like 2025.09.08.1)"
+            exit 1
+          fi
 
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.base-branch }}
-          fetch-depth: 0 # Required so that vanagon doesn't throw up with no tags present
+          fetch-depth: 0
+          token: ${{ secrets.github_pat }}
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -108,3 +106,5 @@ jobs:
           committer: '${{ env.GIT_COMMITTER_NAME }} <${{ env.GIT_COMMITTER_EMAIL }}>'
           body: |
             Automated release-prep through https://github.com/OpenVoxProject/shared-actions/ from commit ${{ github.sha }}.
+
+            After merging this PR, run the **Release** workflow to create the tag and GitHub release.
