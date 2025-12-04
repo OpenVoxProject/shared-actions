@@ -1,20 +1,32 @@
+name: 'Release'
+
 on:
   workflow_call:
     inputs:
-      allowed_owner:
-        description: 'Only allow this owner'
-        required: true
-        type: string
       version:
         description: 'Version to be released.'
-        required: false
-        default: ''
+        required: true
         type: string
       base-branch:
-        description: 'The branch that will be used as the origin for the release branch.'
+        description: 'The branch that will be used as the origin for the release branch (defaults to repo default branch).'
         required: false
         default: ''
         type: string
+      prerelease:
+        description: 'Mark this release as a prerelease'
+        required: false
+        default: false
+        type: boolean
+      include_changelog_in_release:
+        description: 'Include content from CHANGELOG.md in the release notes'
+        required: false
+        default: false
+        type: boolean
+      bump_to_rc_after_release:
+        description: 'Bump version to next RC after release (for semver repos)'
+        required: false
+        default: false
+        type: boolean
     secrets:
       github_pat:
         # Provide a fine-grained token with the following repository permissions:
@@ -40,22 +52,26 @@ jobs:
     name: 'Release'
     environment: release
     runs-on: ubuntu-24.04
-    if: github.repository_owner == inputs.allowed_owner
+    if: github.repository_owner == 'OpenVoxProject'
     steps:
-
-      - name: Make sure inputs.version looks like a valid Semantic Version or Calendar Version
+      - name: Validate version format
         run: |
           # Agent/Server look like 8.23.0-1 or just 8.23.0
           # puppet-runtime looks like 2025.09.08.1
-          echo "${{ inputs.version }}" | grep -E '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'
+          if ! echo "${{ inputs.version }}" | grep -qE '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'; then
+            echo "::error::Version '${{ inputs.version }}' does not match expected format (semver like 8.23.0 or calver like 2025.09.08.1)"
+            exit 1
+          fi
 
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.base-branch }}
+          fetch-depth: 0
           token: ${{ secrets.github_pat }}
 
       - name: Setup Ruby
+        if: inputs.bump_to_rc_after_release || inputs.include_changelog_in_release
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
@@ -68,6 +84,7 @@ jobs:
           chmod 600 ~/.ssh/github_actions
           ssh-agent -a $SSH_AUTH_SOCK > /dev/null
           ssh-add ~/.ssh/github_actions
+
       - name: Setup git
         run: |
           git config --global user.email "$GIT_AUTHOR_EMAIL"
@@ -77,26 +94,78 @@ jobs:
           git config --global commit.gpgsign true
           git config --global tag.gpgsign true
 
-      - name: Display bundle environment
+      - name: Check tag doesn't already exist
         run: |
-          bundle env
+          if git rev-parse "${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Tag '${{ inputs.version }}' already exists!"
+            exit 1
+          fi
 
-      - name: Check that the code version match the version we release
+      - name: Extract release notes from CHANGELOG.md
+        id: extract_notes
+        if: inputs.include_changelog_in_release
         run: |
-          bundle exec rake vox:version:bump:full[${{ inputs.version }}]
-          git diff --exit-code
+          ruby << 'EOF'
+          version = "${{ inputs.version }}"
 
-      - name: Do the release
-        uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
-          commit_user_email: ${{ env.GIT_COMMITTER_EMAIL }}
-          commit_author: '${{ env.GIT_AUTHOR_NAME }} <${{ env.GIT_AUTHOR_EMAIL }}>'
-          tagging_message: ${{ inputs.version }}
-          create_git_tag_only: true
+          unless File.exist?('CHANGELOG.md')
+            warn "::warning::No CHANGELOG.md found, release will use auto-generated notes only"
+            File.write(ENV['GITHUB_OUTPUT'], "has_notes=false\n", mode: 'a')
+            exit 0
+          end
+
+          changelog = File.read('CHANGELOG.md')
+
+          # Match ## [VERSION]...\n then capture everything until the next ## [ or end of file
+          match = changelog.match(/^## \[#{Regexp.escape(version)}\][^\n]*\n(?<notes>.+?)(?=^## \[|\z)/m)
+
+          unless match
+            warn "::warning::Could not find version #{version} in CHANGELOG.md, release will use auto-generated notes only"
+            File.write(ENV['GITHUB_OUTPUT'], "has_notes=false\n", mode: 'a')
+            exit 0
+          end
+
+          notes = match[:notes].strip
+
+          if notes.empty?
+            warn "::warning::Version #{version} section is empty, release will use auto-generated notes only"
+            File.write(ENV['GITHUB_OUTPUT'], "has_notes=false\n", mode: 'a')
+            exit 0
+          end
+
+          File.write('release_notes.md', notes)
+          File.write(ENV['GITHUB_OUTPUT'], "has_notes=true\n", mode: 'a')
+          puts "Extracted release notes for version #{version}"
+          EOF
+
+      - name: Create signed tag
+        run: |
+          git tag -s -m "Release ${{ inputs.version }}" "${{ inputs.version }}"
+          git push origin "${{ inputs.version }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.github_pat }}
+        run: |
+          RELEASE_ARGS=(
+            "${{ inputs.version }}"
+            --title "Release ${{ inputs.version }}"
+            --generate-notes
+          )
+
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            RELEASE_ARGS+=(--prerelease)
+          fi
+
+          if [ "${{ steps.extract_notes.outputs.has_notes }}" = "true" ]; then
+            RELEASE_ARGS+=(--notes-file release_notes.md)
+          fi
+
+          gh release create "${RELEASE_ARGS[@]}"
 
       - name: Compute the next RC version
         id: future_version
+        if: inputs.bump_to_rc_after_release
         run: |
           ruby << EOF >> "$GITHUB_OUTPUT"
           c = "${{ inputs.version }}".split(".")
@@ -110,11 +179,13 @@ jobs:
           puts "version=#{next_version}"
           EOF
 
-      - name: Bump version to avoid confusion with code older that the tag
+      - name: Bump version to avoid confusion with code older than the tag
+        if: inputs.bump_to_rc_after_release
         run: |
           bundle exec rake vox:version:bump:full[${{ steps.future_version.outputs.version }}]
 
-      - name: Commit changes
+      - name: Commit version bump
+        if: inputs.bump_to_rc_after_release
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
