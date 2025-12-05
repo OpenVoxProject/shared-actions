@@ -149,7 +149,7 @@ jobs:
         run: |
           RELEASE_ARGS=(
             "${{ inputs.version }}"
-            --title "Release ${{ inputs.version }}"
+            --title "${{ inputs.version }}"
             --generate-notes
           )
 
