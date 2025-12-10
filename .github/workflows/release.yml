@@ -186,7 +186,7 @@ jobs:
 
       - name: Commit version bump
         if: inputs.bump_to_rc_after_release
-        uses: stefanzweifel/git-auto-commit-action@v6
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
           commit_user_email: ${{ env.GIT_COMMITTER_EMAIL }}
