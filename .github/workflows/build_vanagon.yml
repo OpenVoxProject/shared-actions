@@ -53,6 +53,7 @@ jobs:
             'debian-12-amd64'
             'debian-13-aarch64'
             'debian-13-amd64'
+            'debian-13-armhf'
             'el-8-aarch64'
             'el-8-x86_64'
             'el-9-aarch64'
@@ -96,7 +97,7 @@ jobs:
                 # igncr is required so that Cygwin doesn't get confused by Windows line endings
                 shell="C:/cygwin64/bin/bash.exe -eo pipefail -o igncr '{0}'"
                 ;;
-              *-aarch64 | *-arm64)
+              *-aarch64 | *-arm64 | *-armhf)
                 runner="ubuntu-24.04-arm"
                 shell="bash"
                 ;;
@@ -193,6 +194,10 @@ jobs:
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
         run: bundle install --retry=3
+
+      - name: Setup Qemu (armhf only)
+        if: contains(matrix.platform, 'armhf')
+        uses: docker/setup-qemu-action@v3
 
       - name: Run build script and save git describe
         id: build
