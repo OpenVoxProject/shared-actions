@@ -1,5 +1,5 @@
 ---
-name: Publish package to GitHub Packages and clojars.org
+name: Publish package to clojars.org
 
 on:
   workflow_call:
