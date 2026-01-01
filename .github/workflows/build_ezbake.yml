@@ -19,7 +19,7 @@ on:
         description: |-
           Branch/tag from ezbake that will be used for openvoxdb/server builds.
         type: string
-        default: 'main'
+        required: false
       ezbake-ver:
         description: 'The version specified in project.clj in the given ezbake-ref. Will default to the version found in project.clj in the repo if not specified.'
         type: string
@@ -54,7 +54,7 @@ jobs:
       - name: Install Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2.6'
+          ruby-version: '3.2.9'
           bundler-cache: true
 
       - name: Update awscli
@@ -72,4 +72,4 @@ jobs:
 
       - name: Upload output to S3
         run: |
-          bundle exec rake vox:upload['${{ inputs.ref }}']
+          bundle exec rake vox:upload
