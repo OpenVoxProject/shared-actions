@@ -343,6 +343,13 @@ jobs:
           ref: ${{ inputs.ref }}
           path: ${{ needs.set-project-defaults.outputs.repository }}
 
+      - name: Checkout kvm_automation_tooling module
+        uses: actions/checkout@v5
+        with:
+          repository: 'nmburgan/kvm_automation_tooling'
+          ref: 'patch-1'
+          path: 'kvm_automation_tooling'
+
       - id: vm-cluster
         uses: jpartlow/nested_vms@v1
         with:
@@ -352,6 +359,7 @@ jobs:
           image_version: ${{ matrix.os[3] }}
           host-root-access: true
           install-openvox: false
+          checkout: false
           # Note: the cpu_mode is set to host-model for the sake of
           # el-9 which expects at least x86_64-2 arch. This depends on
           # the runner's architecture being sufficient, and there is
