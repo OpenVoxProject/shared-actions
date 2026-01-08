@@ -34,7 +34,7 @@ env:
   AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
   AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
   DEB_PLATFORMS: ${{ inputs.deb_platform_list || 'ubuntu-22.04,ubuntu-24.04,ubuntu-25.04,debian-11,debian-12,debian-13' }}
-  RPM_PLATFORMS: ${{ inputs.rpm_platform_list || 'amazon-2,amazon-2023,el-8,el-9,el-10,fedora-42,fedora-43,sles-15' }}
+  RPM_PLATFORMS: ${{ inputs.rpm_platform_list || 'amazon-2,amazon-2023,el-8,el-9,el-10,fedora-42,fedora-43,sles-15,sles-16' }}
   EZBAKE_BRANCH: ${{ inputs.ezbake-ref }}
 
 jobs:
