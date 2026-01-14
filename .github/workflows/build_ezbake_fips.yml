@@ -1,0 +1,71 @@
+---
+name: Build an OpenVox ezbake project - FIPS platforms only
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Tag to build'
+        required: true
+        type: string
+      rpm_platform_list:
+        description: 'A comma-separated list of rpm-based platforms to build for, excluding the architecture (e.g. redhatfips-8,redhatfips-9). Do not include spaces. If not provided, will use the default list of FIPS platforms supported by OpenVox Server and DB.'
+        required: false
+        type: string
+      ezbake-ref:
+        description: 'Branch/tag from ezbake that will be used for openvoxdb/server builds.'
+        type: string
+        required: false
+      ezbake-ver:
+        description: 'The version specified in project.clj in the given ezbake-ref. Will default to the version found in project.clj in the repo if not specified.'
+        type: string
+        required: false
+
+env:
+  ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+  BUCKET_NAME: ${{ secrets.S3_ARTIFACTS_BUCKET_NAME }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
+  AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
+  AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
+  DEB_PLATFORMS: ''
+  RPM_PLATFORMS: ${{ inputs.rpm_platform_list || 'redhatfips-8,redhatfips-9' }}
+  EZBAKE_BRANCH: ${{ inputs.ezbake-ref }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 600
+    strategy:
+      fail-fast: false
+    steps:
+      # This always checks out main, because the vox:build task will check
+      # out the tag itself.
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: 'main'
+
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2.9'
+          bundler-cache: true
+
+      - name: Update awscli
+        run: |
+          python -m pip install --upgrade awscli
+
+      - name: Set EZBAKE_VERSION if provided
+        if: ${{ inputs.ezbake-ver != '' }}
+        run: echo "EZBAKE_VERSION=${{ inputs.ezbake-ver }}" >> $GITHUB_ENV
+
+      - name: Run build script
+        run: |
+          rm -rf output
+          bundle exec rake vox:build['${{ inputs.ref }}']
+
+      - name: Upload output to S3
+        run: |
+          bundle exec rake vox:upload
