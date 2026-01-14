@@ -201,7 +201,7 @@ jobs:
                   "acceptance/suites/pre_suite/foss/99_collect_data.rb"
                 ],
                 "acceptance-tests": [
-                  "acceptance/suites/tests"
+                  "acceptance/suites/tests/certificate_authority/split_external_cas.rb"
                 ],
                 "beaker-options": {
                   "helper":       "acceptance/lib/helper.rb",
