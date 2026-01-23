@@ -140,7 +140,7 @@ jobs:
           brew list --formula | xargs -r brew uninstall --force --ignore-dependencies
           brew autoremove
           sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)" -- --force
-          
+
           echo '*** Removing /opt/homebrew directory ***'
           sudo rm -rf /opt/homebrew
 
@@ -189,7 +189,7 @@ jobs:
           # matter for any other part of the build process.
           # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
           echo "root:*:0:0:::" | Out-File -FilePath C:\cygwin64\etc\passwd -Encoding ASCII
-      
+
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
         run: bundle install --retry=3
@@ -201,7 +201,7 @@ jobs:
           rm -rf output
           DESCRIBE=$(git describe --abbrev=9)
           echo "describe=${DESCRIBE//-/.}" >> $GITHUB_OUTPUT
-          bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}'] 
+          bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
