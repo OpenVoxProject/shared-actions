@@ -4,8 +4,8 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'Tag to build'
-        required: true
+        description: 'Git ref to build'
+        required: false
         type: string
       project_name:
         description: 'The vanagon project to build'
