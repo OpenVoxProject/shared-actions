@@ -171,7 +171,7 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
 
-      - name: Checkout code at tag
+      - name: Checkout code
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
