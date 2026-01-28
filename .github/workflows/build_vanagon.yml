@@ -67,6 +67,7 @@ jobs:
             'macos-all-arm64'
             'macos-all-x86_64'
             'sles-15-x86_64'
+            'sles-16-x86_64'
             'ubuntu-22.04-aarch64'
             'ubuntu-22.04-amd64'
             'ubuntu-24.04-aarch64'
