@@ -50,7 +50,7 @@ jobs:
           distribution: temurin
 
       - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@13.4
+        uses: DeLaGuardo/setup-clojure@13.5
         with:
           lein: 'latest'
 
