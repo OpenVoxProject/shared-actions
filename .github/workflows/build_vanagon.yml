@@ -202,7 +202,7 @@ jobs:
 
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
-        run: bundle install --retry=3
+        run: bundle config set without 'release' && bundle install --retry=3
 
       # from https://github.com/Sharpie/puppet-build-experiment/blob/master/resources/bolt/tasks/configure_builder.sh#L3-L14
       - name: Force docker into 32bit mode
