@@ -104,6 +104,7 @@ jobs:
           assignees: '${{ github.triggering_actor }}'
           author: '${{ env.GIT_AUTHOR_NAME }} <${{ env.GIT_AUTHOR_EMAIL }}>'
           committer: '${{ env.GIT_COMMITTER_NAME }} <${{ env.GIT_COMMITTER_EMAIL }}>'
+          signoff: true
           body: |
             Automated release-prep through https://github.com/OpenVoxProject/shared-actions/ from commit ${{ github.sha }}.
 
