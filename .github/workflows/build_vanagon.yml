@@ -94,11 +94,11 @@ jobs:
           for platform in "${platforms[@]}"; do
             case "$platform" in
               macos-*-x86_64)
-                runner="macos-latest"
+                runner="macos-26"
                 shell="arch -x86_64 /bin/bash -e {0}"
                 ;;
               macos-*-arm64)
-                runner="macos-latest"
+                runner="macos-26"
                 shell="bash"
                 ;;
               windows-*)
