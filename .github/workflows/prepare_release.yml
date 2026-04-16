@@ -95,6 +95,7 @@ jobs:
       - name: Create pull Request
         uses: peter-evans/create-pull-request@v8
         with:
+          signoff: true
           commit-message: "Release ${{ inputs.version }}"
           branch: "release-${{ inputs.version }}"
           delete-branch: true
