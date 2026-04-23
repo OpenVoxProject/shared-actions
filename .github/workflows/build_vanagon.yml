@@ -54,6 +54,7 @@ jobs:
             'debian-13-aarch64'
             'debian-13-amd64'
             'debian-13-armhf'
+            'el-7-x86_64'
             'el-8-aarch64'
             'el-8-x86_64'
             'el-9-aarch64'
