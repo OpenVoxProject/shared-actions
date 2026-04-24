@@ -89,9 +89,9 @@ jobs:
             IFS=',' read -r -a platforms <<< "${{ inputs.platform_list }}"
           else
             platforms=("${default_list[@]}")
-            # openbolt does not support redhatfips
-            if [[ "${{ inputs.project_name }}" == "openbolt" ]]; then
-              mapfile -t platforms < <(printf '%s\n' "${platforms[@]}" | grep -v '^redhatfips-')
+            # openbolt and openbolt-runtime do not support redhatfips or el-7
+            if [[ "${{ inputs.project_name }}" == openbolt* ]]; then
+              mapfile -t platforms < <(printf '%s\n' "${platforms[@]}" | grep -v -e '^redhatfips-' -e '^el-7-')
             fi
           fi
 
