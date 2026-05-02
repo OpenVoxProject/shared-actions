@@ -345,7 +345,7 @@ jobs:
           path: ${{ needs.set-project-defaults.outputs.repository }}
 
       - id: vm-cluster
-        uses: jpartlow/nested_vms@v1
+        uses: bastelfreak/nested_vms@ubuntu26
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
