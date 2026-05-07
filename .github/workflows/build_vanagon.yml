@@ -46,7 +46,7 @@ jobs:
       build_matrix: ${{ steps.set-matrix.outputs.build_matrix }}
     steps:
       - name: Checkout platform config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: OpenVoxProject/shared-actions
           ref: main
