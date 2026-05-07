@@ -20,6 +20,11 @@ on:
         description: 'The version specified in project.clj in the given ezbake-ref. Will default to the version found in project.clj in the repo if not specified.'
         type: string
         required: false
+      branch:
+        description: 'Release branch being built. Used for repo checkout and default platform list.'
+        type: string
+        required: false
+        default: 'main'
 
 env:
   ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
@@ -30,7 +35,6 @@ env:
   AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
   AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
   DEB_PLATFORMS: ''
-  RPM_PLATFORMS: ${{ inputs.rpm_platform_list || 'redhatfips-8,redhatfips-9' }}
   EZBAKE_BRANCH: ${{ inputs.ezbake-ref }}
 
 jobs:
@@ -40,12 +44,28 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      # This always checks out main, because the vox:build task will check
-      # out the tag itself.
+      # This checks out the release branch, because the vox:build task will
+      # check out the tag itself.
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: 'main'
+          ref: ${{ inputs.branch }}
+
+      - name: Checkout platform config
+        uses: actions/checkout@v4
+        with:
+          repository: OpenVoxProject/shared-actions
+          ref: main
+          path: .shared-actions
+          sparse-checkout: platforms.json
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve platform list
+        env:
+          RPM_PLATFORMS: ${{ inputs.rpm_platform_list }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-fips-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
 
       - name: Install Ruby
         uses: ruby/setup-ruby@v1
@@ -59,12 +79,16 @@ jobs:
 
       - name: Set EZBAKE_VERSION if provided
         if: ${{ inputs.ezbake-ver != '' }}
-        run: echo "EZBAKE_VERSION=${{ inputs.ezbake-ver }}" >> $GITHUB_ENV
+        env:
+          EZBAKE_VER: ${{ inputs.ezbake-ver }}
+        run: echo "EZBAKE_VERSION=${EZBAKE_VER}" >> $GITHUB_ENV
 
       - name: Run build script
+        env:
+          BUILD_REF: ${{ inputs.ref }}
         run: |
           rm -rf output
-          bundle exec rake vox:build['${{ inputs.ref }}']
+          bundle exec rake "vox:build[${BUILD_REF}]"
 
       - name: Upload output to S3
         run: |
