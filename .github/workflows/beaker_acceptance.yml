@@ -23,7 +23,7 @@ on:
           The OpenVox collection to install from.
         required: false
         type: string
-        default: openvox8
+        default: openvox9
       openvox-agent-version:
         description: |-
           The version of the openvox-agent package to install.
