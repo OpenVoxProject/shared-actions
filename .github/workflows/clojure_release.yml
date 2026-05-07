@@ -3,6 +3,12 @@ name: Publish package to clojars.org
 
 on:
   workflow_call:
+    inputs:
+      base-branch:
+        description: 'The branch to release from. Leave empty for default branch.'
+        type: string
+        required: false
+        default: ''
     secrets:
       github_pat:
         # Provide a fine-grained token with the following repository permissions:
