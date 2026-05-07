@@ -52,7 +52,7 @@ jobs:
           ref: ${{ inputs.branch }}
 
       - name: Checkout platform config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: OpenVoxProject/shared-actions
           ref: main
