@@ -97,6 +97,7 @@ jobs:
         with:
           commit-message: "Release ${{ inputs.version }}"
           branch: "release-${{ inputs.version }}"
+          base: ${{ inputs.base-branch }}
           delete-branch: true
           title: "Release ${{ inputs.version }}"
           labels: skip-changelog
