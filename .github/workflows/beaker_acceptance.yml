@@ -364,7 +364,7 @@ jobs:
         env:
           OPENVOX_ARTIFACTS_URL: |-
             ${{ inputs.artifacts-url }}
-          OPENVOX_COLLECTION: ${{ inputs.collection }}
+          OPENVOX_COLLECTION: ${{ inputs.openvox-collection }}
           OPENVOX_AGENT_VERSION: |-
             ${{ ((inputs.openvox-agent-version == '') && 'latest') ||
                  inputs.openvox-agent-version }}
