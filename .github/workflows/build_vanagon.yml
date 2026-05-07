@@ -55,14 +55,18 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - id: set-matrix
+        env:
+          PLATFORM_LIST: ${{ inputs.platform_list }}
+          PROJECT_NAME: ${{ inputs.project_name }}
+          BRANCH: ${{ inputs.branch }}
         run: |
-          mapfile -t default_list < <(jq -r '.["${{ inputs.branch }}"].vanagon[]' .shared-actions/platforms.json)
-          if [[ -n "${{ inputs.platform_list }}" ]]; then
-            IFS=',' read -r -a platforms <<< "${{ inputs.platform_list }}"
+          mapfile -t default_list < <(jq -r --arg branch "${BRANCH}" '.[$branch].vanagon[]' .shared-actions/platforms.json)
+          if [[ -n "${PLATFORM_LIST}" ]]; then
+            IFS=',' read -r -a platforms <<< "${PLATFORM_LIST}"
           else
             platforms=("${default_list[@]}")
             # openbolt and openbolt-runtime do not support redhatfips or el-7
-            if [[ "${{ inputs.project_name }}" == openbolt* ]]; then
+            if [[ "${PROJECT_NAME}" == openbolt* ]]; then
               mapfile -t platforms < <(printf '%s\n' "${platforms[@]}" | grep -v -e '^redhatfips-' -e '^el-7-')
             fi
           fi
@@ -201,11 +205,14 @@ jobs:
       - name: Run build script and save git describe
         id: build
         working-directory: ${{ inputs.working_directory }}
+        env:
+          PROJECT_NAME: ${{ inputs.project_name }}
+          BUILD_PLATFORM: ${{ matrix.platform }}
         run: |-
           rm -rf output
           DESCRIBE=$(git describe --abbrev=9)
           echo "describe=${DESCRIBE//-/.}" >> $GITHUB_OUTPUT
-          bundle exec rake vox:build['${{ inputs.project_name }}','${{ matrix.platform }}']
+          bundle exec rake "vox:build[${PROJECT_NAME},${BUILD_PLATFORM}]"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -224,4 +231,6 @@ jobs:
           # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
           AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
           AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
-        run: bundle exec rake vox:upload['${{ steps.build.outputs.describe }}','${{ matrix.platform }}']
+          BUILD_DESCRIBE: ${{ steps.build.outputs.describe }}
+          BUILD_PLATFORM: ${{ matrix.platform }}
+        run: bundle exec rake "vox:upload[${BUILD_DESCRIBE},${BUILD_PLATFORM}]"

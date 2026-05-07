@@ -64,19 +64,13 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Resolve platform lists
+        env:
+          DEB_PLATFORMS: ${{ inputs.deb_platform_list }}
+          RPM_PLATFORMS: ${{ inputs.rpm_platform_list }}
+          BRANCH: ${{ inputs.branch }}
         run: |
-          if [[ -n "${{ inputs.deb_platform_list }}" ]]; then
-            deb_platforms="${{ inputs.deb_platform_list }}"
-          else
-            deb_platforms=$(jq -r '.["${{ inputs.branch }}"]."ezbake-deb" | join(",")' .shared-actions/platforms.json)
-          fi
-          if [[ -n "${{ inputs.rpm_platform_list }}" ]]; then
-            rpm_platforms="${{ inputs.rpm_platform_list }}"
-          else
-            rpm_platforms=$(jq -r '.["${{ inputs.branch }}"]."ezbake-rpm" | join(",")' .shared-actions/platforms.json)
-          fi
-          echo "DEB_PLATFORMS=${deb_platforms}" >> $GITHUB_ENV
-          echo "RPM_PLATFORMS=${rpm_platforms}" >> $GITHUB_ENV
+          echo "DEB_PLATFORMS=${DEB_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-deb" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
+          echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
 
       - name: Install Ruby
         uses: ruby/setup-ruby@v1
@@ -90,12 +84,16 @@ jobs:
 
       - name: Set EZBAKE_VERSION if provided
         if: ${{ inputs.ezbake-ver != '' }}
-        run: echo "EZBAKE_VERSION=${{ inputs.ezbake-ver }}" >> $GITHUB_ENV
+        env:
+          EZBAKE_VER: ${{ inputs.ezbake-ver }}
+        run: echo "EZBAKE_VERSION=${EZBAKE_VER}" >> $GITHUB_ENV
 
       - name: Run build script
+        env:
+          BUILD_REF: ${{ inputs.ref }}
         run: |
           rm -rf output
-          bundle exec rake vox:build['${{ inputs.ref }}']
+          bundle exec rake "vox:build[${BUILD_REF}]"
 
       - name: Upload output to S3
         run: |
