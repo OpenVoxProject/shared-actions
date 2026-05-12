@@ -75,8 +75,29 @@ jobs:
       - name: Install Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2.9'
+          ruby-version: '4.0'
           bundler-cache: true
+
+      - id: docker-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/ezbake-builder.tar
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}
+
+      - name: Load or build Docker image
+        run: |
+          if [[ -f /tmp/ezbake-builder.tar ]]; then
+            docker load -i /tmp/ezbake-builder.tar
+          else
+            docker build -t ezbake-builder .
+            docker save ezbake-builder -o /tmp/ezbake-builder.tar
+          fi
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.docker-cache.outputs.cache-hit != 'true'
+        with:
+          path: /tmp/ezbake-builder.tar
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}
 
       - name: Update awscli
         run: |
