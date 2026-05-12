@@ -124,7 +124,8 @@ jobs:
               ["rocky", "8"],
               ["rocky", "9"],
               ["ubuntu", "22.04"],
-              ["ubuntu", "24.04"]
+              ["ubuntu", "24.04"],
+              ["ubuntu", "26.04"]
             ]
           PROJECT_DEFAULTS: |-
             {
@@ -344,7 +345,7 @@ jobs:
           path: ${{ needs.set-project-defaults.outputs.repository }}
 
       - id: vm-cluster
-        uses: jpartlow/nested_vms@v1
+        uses: bastelfreak/nested_vms@ubuntu26
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
