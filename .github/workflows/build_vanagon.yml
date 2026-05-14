@@ -87,6 +87,11 @@ jobs:
                 # igncr is required so that Cygwin doesn't get confused by Windows line endings
                 shell="C:/cygwin64/bin/bash.exe -eo pipefail -o igncr '{0}'"
                 ;;
+              windows-msys2-*)
+                runner="windows-latest"
+                # igncr is required so that Cygwin doesn't get confused by Windows line endings
+                shell="C:/msys64/bin/bash.exe -eo pipefail -o igncr '{0}'"
+                ;;
               *-aarch64 | *-arm64 | *-armhf)
                 runner="ubuntu-24.04-arm"
                 shell="bash"
@@ -170,7 +175,7 @@ jobs:
           fetch-depth: 0 # So we fetch all history and tags and can build non-tagged versions
 
       - name: Install Cygwin and bootstrap dependencies (Windows only)
-        if: ${{ startsWith(matrix.platform, 'windows') }}
+        if: ${{ startsWith(matrix.platform, 'windows-all') }}
         shell: pwsh
         working-directory: ${{ inputs.working_directory }}
         run: |
@@ -185,9 +190,33 @@ jobs:
           # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
           echo "root:*:0:0:::" | Out-File -FilePath C:\cygwin64\etc\passwd -Encoding ASCII
 
-      - name: Bundle install
+      - name: Install msys2 and bootstrap dependencies
+        if: ${{ startsWith(matrix.platform, 'windows-msys2') }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-ruby make libyaml-devel
+
+      - name: Set pathes (Windows only)
+        if: ${{ startsWith(matrix.platform, 'windows-msys2') }}
+        shell: pwsh
         working-directory: ${{ inputs.working_directory }}
-        run: bundle install --retry=3
+        run: |
+          # This is to make sure Cygwin binaries are used over preinstalled items
+          echo "C:\msys64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # This is to fix file permissions issues when we check out code outside of Cygwin
+          echo "none /cygdrive cygdrive binary,noacl,posix=0,user 0 0" | Out-File -FilePath C:\msys64\etc\fstab -Encoding ASCII
+          # This is so that Puppet doesn't throw up when we look up Puppet.version in the
+          # openvox repo. It will think it is in a posix environment, but it should not
+          # matter for any other part of the build process.
+          # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
+          echo "root:*:0:0:::" | Out-File -FilePath C:\msys64\etc\passwd -Encoding ASCII
+          
+      - name: Bundle install
+        shell: msys2 {0}
+        working-directory: ${{ inputs.working_directory }}
+        run: bundle install --retry=3 --verbose
 
       # from https://github.com/Sharpie/puppet-build-experiment/blob/master/resources/bolt/tasks/configure_builder.sh#L3-L14
       - name: Force docker into 32bit mode
@@ -204,6 +233,7 @@ jobs:
 
       - name: Run build script and save git describe
         id: build
+        shell: msys2 {0}
         working-directory: ${{ inputs.working_directory }}
         env:
           PROJECT_NAME: ${{ inputs.project_name }}
