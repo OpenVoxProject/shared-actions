@@ -16,6 +16,8 @@
       "el-10-aarch64",
       "fedora-43-x86_64",
       "fedora-43-aarch64",
+      "fedora-44-x86_64",
+      "fedora-44-aarch64",
       "macos-all-arm64",
       "macos-all-x86_64",
       "redhatfips-8-x86_64",
