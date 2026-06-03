@@ -261,4 +261,7 @@ jobs:
           AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
           BUILD_DESCRIBE: ${{ steps.build.outputs.describe }}
           BUILD_PLATFORM: ${{ matrix.platform }}
+          # Disable MSYS2 PATH stripping so that aws CLI installed on
+          # GitHub Runners is visible.
+          MSYS2_PATH_TYPE: inherit
         run: bundle exec rake "vox:upload[${BUILD_DESCRIBE},${BUILD_PLATFORM}]"
