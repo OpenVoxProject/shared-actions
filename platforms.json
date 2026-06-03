@@ -33,7 +33,7 @@
       "ubuntu-26.04-amd64",
       "ubuntu-26.04-aarch64",
       "ubuntu-26.04-armhf",
-      "windows-all-x64"
+      "windows-msys2-x64"
     ],
     "ezbake-deb": [
       "ubuntu-22.04",
