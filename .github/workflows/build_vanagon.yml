@@ -173,6 +173,7 @@ jobs:
             gcc
             make
             git
+            libffi-devel
             libyaml-devel
 
       - name: Configure MSYS2 (Windows only)
