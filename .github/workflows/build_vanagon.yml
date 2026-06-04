@@ -83,12 +83,12 @@ jobs:
                 shell="bash"
                 ;;
               windows-all-*)
-                runner="windows-latest"
+                runner="windows-2025-vs2026"
                 # igncr is required so that Cygwin doesn't get confused by Windows line endings
                 shell="C:/cygwin64/bin/bash.exe -eo pipefail -o igncr '{0}'"
                 ;;
               windows-msys2-*)
-                runner="windows-latest"
+                runner="windows-2025-vs2026"
                 # msys2.cmd is created by the msys2/setup-msys action.
                 # It typically lives at D:\a\_temp\setup-msys2\msys2.cmd
                 # and is basically a wrapper to invoke `bash.exe -leo pipefail`
