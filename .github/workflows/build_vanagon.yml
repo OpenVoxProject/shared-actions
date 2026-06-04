@@ -182,6 +182,9 @@ jobs:
 
       - name: Configure MSYS2 (Windows only)
         if: ${{ startsWith(matrix.platform, 'windows-msys2') }}
+        env:
+          # Disable MSYS2 PATH stripping so that winget CLI is visible.
+          MSYS2_PATH_TYPE: inherit
         run: |
           # bundle install hangs under MSYS2 Ruby when more than one
           # job is run in parallel.
@@ -192,6 +195,15 @@ jobs:
           # matter for any other part of the build process.
           # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
           echo "root:*:0:0:::" >>/etc/passwd
+
+          # WinGet exits with a failure code if asked to install an
+          # already-installed package.
+          winget list \
+            --accept-source-agreements \
+            --id WiXToolset.WiXToolset --source winget || \
+          winget install \
+            --accept-source-agreements --accept-package-agreements --silent \
+            --id WiXToolset.WiXToolset --source winget
 
       - name: Set git params for Windows
         if: ${{ startsWith(matrix.platform, 'windows') }}
