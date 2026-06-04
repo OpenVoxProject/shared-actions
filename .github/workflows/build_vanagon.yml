@@ -225,6 +225,11 @@ jobs:
 
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
+        env:
+          # Ensure only POSIX compilers and runtime libs are on the PATH.
+          # Default is UCRT64, which prioritizes /ucrt64/bin/gcc, and that
+          # breaks `bundle install` for MSYS POSIX Ruby.
+          MSYSTEM: MSYS
         run: |
           bundle install --retry=3
 
