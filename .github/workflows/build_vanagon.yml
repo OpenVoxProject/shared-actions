@@ -183,6 +183,12 @@ jobs:
           # job is run in parallel.
           bundle config set --global jobs 1
 
+          # This is so that Puppet doesn't throw up when we look up Puppet.version in the
+          # openvox repo. It will think it is in a posix environment, but it should not
+          # matter for any other part of the build process.
+          # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
+          echo "root:*:0:0:::" >>/etc/passwd
+
       - name: Set git params for Windows
         if: ${{ startsWith(matrix.platform, 'windows') }}
         shell: pwsh
