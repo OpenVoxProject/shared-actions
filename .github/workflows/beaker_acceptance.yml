@@ -153,8 +153,7 @@ jobs:
                     "role": "primary",
                     "count": 1,
                     "cpus": 4,
-                    "mem_mb": 8192,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 8192
                   }
                 ]
               },
@@ -181,8 +180,7 @@ jobs:
                     "role": "agent",
                     "count": 1,
                     "cpus": 2,
-                    "mem_mb": 4096,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 4096
                   }
                 ]
               },
@@ -218,15 +216,13 @@ jobs:
                     "role": "primary",
                     "count": 1,
                     "cpus": 4,
-                    "mem_mb": 8192,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 8192
                   },
                   {
                     "role": "agent",
                     "count": 1,
                     "cpus": 2,
-                    "mem_mb": 2048,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 4096
                   }
                 ]
               },
@@ -262,15 +258,13 @@ jobs:
                     "role": "primary",
                     "count": 1,
                     "cpus": 4,
-                    "mem_mb": 8192,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 8192
                   },
                   {
                     "role": "agent",
                     "count": 1,
                     "cpus": 2,
-                    "mem_mb": 2048,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 4096
                   }
                 ]
               }
@@ -355,11 +349,6 @@ jobs:
           image_version: ${{ matrix.os[3] }}
           host-root-access: true
           install-openvox: false
-          # Note: the cpu_mode is set to host-model for the sake of
-          # el-9 which expects at least x86_64-2 arch. This depends on
-          # the runner's architecture being sufficient, and there is
-          # probably a better way to get this set on the libvirt
-          # domain instead.
           vms: ${{ needs.set-project-defaults.outputs.vms }}
 
       - name: Write Install OpenVox Params
