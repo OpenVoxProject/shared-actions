@@ -93,7 +93,7 @@ env:
   # The Ruby version to use for the project being tested.
   # This is used to install Ruby and run Bundler when
   # running the project's Beaker acceptance suite.
-  RUBY_VERSION: '3.3'
+  RUBY_VERSION: '3.4'
 
 jobs:
   set-project-defaults:
