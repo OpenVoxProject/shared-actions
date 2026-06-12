@@ -172,9 +172,7 @@ jobs:
                 "beaker-options": {
                   "helper":       "lib/helper.rb"
                 },
-                "os-add": [
-                  ["debian", "13", "amd64", "daily-latest"]
-                ],
+                "os-add": [],
                 "vms": [
                   {
                     "role": "agent",
