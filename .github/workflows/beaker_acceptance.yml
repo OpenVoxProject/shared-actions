@@ -86,6 +86,21 @@ on:
         required: false
         type: string
         default: 'https://s3.osuosl.org/openvox-artifacts'
+      guest-arch:
+        description: |-
+          The architecture of the guest VMs to run the acceptance tests
+          on. This is used by the nested_vms action to determine which
+          VM images to use.
+
+          If not provided, the default is x86_64.
+
+          NOTE: Currently only x86_64 *runners* support nested
+          virtualization, so if guest-arch is set to arm64, the
+          nested_vms will run under qemu and be quite a bit slower
+          (5x-20x).
+        required: false
+        type: string
+        default: 'x86_64'
 
 env:
   # Suppress warnings about Bolt gem versus package use.
@@ -343,7 +358,7 @@ jobs:
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
-          os-arch: ${{ matrix.os[2] || 'x86_64' }}
+          os-arch: ${{ matrix.os[2] || inputs.guest-arch || 'x86_64' }}
           image_version: ${{ matrix.os[3] }}
           host-root-access: true
           install-openvox: false
