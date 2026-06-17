@@ -496,6 +496,18 @@ jobs:
           jq 'add' beaker.yml.inputs | yq -P > .beaker.yml
           cat .beaker.yml
 
+      - name: Increase timeouts for arm64 guests running under qemu
+        if: inputs.guest-arch == 'arm64' && runner.arch != 'ARM64'
+        working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+        run: |-
+          # Double the default timeouts (a Beaker pre-suite step
+          # will take update the actual defaults/units)
+          yq -i \
+            '.["master-start-curl-retries"]   = 240 |
+             .["puppetserver-start-timeout"]  = 600 |
+             .["puppetserver-reload-timeout"] = 240' .beaker.yml
+          cat .beaker.yml
+
       - name: Run Beaker
         working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
         run: |-
