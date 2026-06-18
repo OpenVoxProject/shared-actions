@@ -121,6 +121,7 @@ jobs:
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
       acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
       acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
+      acceptance-shard-tags: ${{ steps.set-defaults.outputs.acceptance_shard_tags }}
       beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
       os: ${{ steps.set-defaults.outputs.os }}
       os-add: ${{ steps.set-defaults.outputs.os_add }}
@@ -144,6 +145,7 @@ jobs:
               ["ubuntu", "24.04"],
               ["ubuntu", "26.04"]
             ]
+          QEMU: ${{ (inputs.guest-arch == 'arm64' && runner.arch != 'ARM64') && 'true' || 'false' }}
           PROJECT_DEFAULTS: |-
             {
               "openvox": {
@@ -157,6 +159,12 @@ jobs:
                 ],
                 "acceptance-tests": [
                   "tests"
+                ],
+                "acceptance-shard-tags": [
+                  "shard:group1",
+                  "shard:group2",
+                  "shard:group3",
+                  "shard:group4"
                 ],
                 "beaker-options": {
                   "helper":       "lib/helper.rb",
@@ -309,6 +317,18 @@ jobs:
             echo "${output_name}=${default}" >> $GITHUB_OUTPUT
           done
 
+          # If we are running under qemu, need to limit the os matrix
+          # and add acceptance-shard-tags to split the tests into
+          # smaller groups to avoid timeouts.
+          if [[ "${QEMU}" == "true" ]]; then
+            echo "Running under qemu, limiting os matrix and adding shard tags"
+            echo 'os=[["rocky", "9"], ["debian", "13"]]' >> $GITHUB_OUTPUT
+            acceptance_shard_tags=$(jq -rMc '."acceptance-shard-tags"' project_defaults.json)
+            echo "acceptance_shard_tags=${acceptance_shard_tags:-[]}" >> $GITHUB_OUTPUT
+          else
+            echo 'acceptance_shard_tags=[]' >> $GITHUB_OUTPUT
+          fi
+
   set-matrix:
     needs: set-project-defaults
     runs-on: ubuntu-24.04
@@ -337,6 +357,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJson(needs.set-matrix.outputs.os-matrix) }}
+        tags: ${{ fromJson(needs.set-project-defaults.outputs.acceptance-shard-tags) }}
     env:
       ACCEPTANCE_WORKING_DIR: |-
         ${{ format('{0}/{1}/{2}',
@@ -467,6 +488,7 @@ jobs:
             ${{ needs.set-project-defaults.outputs.acceptance-pre-suite || '[]' }}
           TESTS_ARRAY: |-
             ${{ needs.set-project-defaults.outputs.acceptance-tests || '[]' }}
+          TAGS: ${{ matrix.tags && toJson(matrix.tags) || '[]' }}
           BEAKER_OPTIONS: |-
             ${{ needs.set-project-defaults.outputs.beaker-options || '{}' }}
         run: |-
@@ -487,7 +509,8 @@ jobs:
               "preserve_hosts":            "always",
               "type":                      "aio",
               "pre_suite": ${PRE_SUITE_ARRAY},
-              "tests": ${TESTS_ARRAY}
+              "tests": ${TESTS_ARRAY},
+              "test_tag_and": ${TAGS}
             },
             ${BEAKER_OPTIONS}
           ]
