@@ -339,6 +339,7 @@ jobs:
         env:
           OS: ${{ needs.set-project-defaults.outputs.os }}
           OS_ADD: ${{ needs.set-project-defaults.outputs.os-add }}
+          ARCH: ${{ inputs.guest-arch || 'x86_64' }}
         run: |-
           cat > matrix_inputs.json <<EOF
           [
@@ -347,7 +348,16 @@ jobs:
           ]
           EOF
           cat matrix_inputs.json
-          echo "os_matrix=$(jq --monochrome-output --compact-output 'add | unique' matrix_inputs.json)" >> $GITHUB_OUTPUT
+          unique_matrix=$(jq --monochrome-output 'add | unique' matrix_inputs.json)
+          jq_inject_arch="map( \
+            if length == 2 then \
+              . + [\"${ARCH}\"] \
+            else . end \
+          )"
+          matrix_with_arch=$(jq --monochrome-output "${jq_inject_arch}" <<< "${unique_matrix}")
+          echo -e "\nGenerated matrix with architecture:"
+          echo "${matrix_with_arch}"
+          echo "os_matrix=$(jq --monochrome-output --compact-output <<< "${matrix_with_arch}")" >> $GITHUB_OUTPUT
 
   acceptance:
     name: Acceptance Tests
@@ -379,7 +389,7 @@ jobs:
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
-          os-arch: ${{ matrix.os[2] || inputs.guest-arch || 'x86_64' }}
+          os-arch: ${{ matrix.os[2] || 'x86_64' }}
           image_version: ${{ matrix.os[3] }}
           host-root-access: true
           install-openvox: false
