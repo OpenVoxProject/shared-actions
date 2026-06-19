@@ -558,10 +558,15 @@ jobs:
         if: inputs.guest-arch == 'arm64' && runner.arch != 'ARM64'
         working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
         run: |-
-          # Double the default timeouts (a Beaker pre-suite step
+          # Increase the default timeouts (a Beaker pre-suite step
           # will take update the actual defaults/units)
+          # curl-retries and puppetserver start and reload timeouts
+          # are used by several suites. The
+          # puppetserver-foreground-timeout is specific to the
+          # openvox-server suite.
           yq -i \
             '.["master-start-curl-retries"]   = 240 |
+             .["puppetserver-foreground-timeout"] = 360 |
              .["puppetserver-start-timeout"]  = 600 |
              .["puppetserver-reload-timeout"] = 240' .beaker.yml
           cat .beaker.yml
