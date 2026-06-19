@@ -145,6 +145,11 @@ jobs:
               ["ubuntu", "24.04"],
               ["ubuntu", "26.04"]
             ]
+          DEFAULT_OS_ARM64_SHARDED: |-
+            [
+              ["rocky", "9"],
+              ["debian", "13"]
+            ]
           QEMU: ${{ (inputs.guest-arch == 'arm64' && runner.arch != 'ARM64') && 'true' || 'false' }}
           PROJECT_DEFAULTS: |-
             {
@@ -305,6 +310,7 @@ jobs:
             "acceptance-working-dir"
             "acceptance-pre-suite"
             "acceptance-tests"
+            "acceptance-shard-tags"
             "beaker-options"
             "os"
             "os-add"
@@ -317,16 +323,17 @@ jobs:
             echo "${output_name}=${default}" >> $GITHUB_OUTPUT
           done
 
-          # If we are running under qemu, need to limit the os matrix
+          # If we are running under qemu and the defaults includes
+          # acceptance-shard-tags, need to limit the os matrix
           # and add acceptance-shard-tags to split the tests into
           # smaller groups to avoid timeouts.
-          if [[ "${QEMU}" == "true" ]]; then
-            echo "Running under qemu, limiting os matrix and adding shard tags"
-            echo 'os=[["rocky", "9"], ["debian", "13"]]' >> $GITHUB_OUTPUT
-            acceptance_shard_tags=$(jq -rMc '."acceptance-shard-tags"' project_defaults.json)
-            echo "acceptance_shard_tags=${acceptance_shard_tags:-null}" >> $GITHUB_OUTPUT
-          else
-            echo 'acceptance_shard_tags=null' >> $GITHUB_OUTPUT
+          acceptance_shard_tags=$(jq -Mc '."acceptance-shard-tags"' project_defaults.json)
+          if [[ "${QEMU}" == "true" ]] &&
+             jq -e 'length > 0' <<< "${acceptance_shard_tags}" > /dev/null; then
+            echo "Running under qemu with acceptance_shard_tags set to '${acceptance_shard_tags}'; limiting os matrix."
+            limited_os_matrix=$(jq -Mc <<< "${DEFAULT_OS_ARM64_SHARDED}")
+            echo "Resetting os to ${limited_os_matrix}"
+            echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
           fi
 
   set-matrix:
