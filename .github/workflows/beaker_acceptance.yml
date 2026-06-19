@@ -217,7 +217,7 @@ jobs:
                 "install-termini": true,
                 "acceptance-working-dir": "./",
                 "acceptance-pre-suite": [
-                  "acceptance/suites/pre_suite/openvox/configure_type_defaults.rb",
+                  "acceptance/suites/pre_suite/openvox",
                   "acceptance/suites/pre_suite/foss/00_setup_environment.rb",
                   "acceptance/suites/pre_suite/foss/070_InstallCACerts.rb",
                   "acceptance/suites/pre_suite/foss/10_update_ca_certs.rb",
