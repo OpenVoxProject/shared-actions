@@ -324,40 +324,60 @@ jobs:
             echo "Running under qemu, limiting os matrix and adding shard tags"
             echo 'os=[["rocky", "9"], ["debian", "13"]]' >> $GITHUB_OUTPUT
             acceptance_shard_tags=$(jq -rMc '."acceptance-shard-tags"' project_defaults.json)
-            echo "acceptance_shard_tags=${acceptance_shard_tags:-[]}" >> $GITHUB_OUTPUT
+            echo "acceptance_shard_tags=${acceptance_shard_tags:-null}" >> $GITHUB_OUTPUT
           else
-            echo 'acceptance_shard_tags=[]' >> $GITHUB_OUTPUT
+            echo 'acceptance_shard_tags=null' >> $GITHUB_OUTPUT
           fi
 
   set-matrix:
     needs: set-project-defaults
     runs-on: ubuntu-24.04
     outputs:
-      os-matrix: ${{ steps.set-matrix.outputs.os_matrix }}
+      job-matrix: ${{ steps.set-matrix.outputs.job_matrix }}
     steps:
       - id: set-matrix
         env:
           OS: ${{ needs.set-project-defaults.outputs.os }}
           OS_ADD: ${{ needs.set-project-defaults.outputs.os-add }}
           ARCH: ${{ inputs.guest-arch || 'x86_64' }}
+          ACCEPTANCE_SHARD_TAGS: ${{ needs.set-project-defaults.outputs.acceptance-shard-tags }}
         run: |-
-          cat > matrix_inputs.json <<EOF
+          cat > os_matrix_inputs.json <<EOF
           [
             ${OS},
             ${OS_ADD}
           ]
           EOF
-          cat matrix_inputs.json
-          unique_matrix=$(jq --monochrome-output 'add | unique' matrix_inputs.json)
+          cat os_matrix_inputs.json
+          unique_os_matrix=$(jq -M 'add | unique' os_matrix_inputs.json)
           jq_inject_arch="map( \
             if length == 2 then \
               . + [\"${ARCH}\"] \
             else . end \
           )"
-          matrix_with_arch=$(jq --monochrome-output "${jq_inject_arch}" <<< "${unique_matrix}")
-          echo -e "\nGenerated matrix with architecture:"
-          echo "${matrix_with_arch}"
-          echo "os_matrix=$(jq --monochrome-output --compact-output <<< "${matrix_with_arch}")" >> $GITHUB_OUTPUT
+          os_matrix_with_arch=$(jq -M "${jq_inject_arch}" <<< "${unique_os_matrix}")
+          echo -e "\nGenerated os-matrix with architecture:"
+          echo "${os_matrix_with_arch}"
+
+          cat > job_matrix_inputs.json <<EOF
+          {
+            "os": ${os_matrix_with_arch},
+            "tags": ${ACCEPTANCE_SHARD_TAGS}
+          }
+          EOF
+          echo -e "\nInitial job matrix inputs:"
+          cat job_matrix_inputs.json
+
+          jq_select_matrix="if \
+            (.tags | length) == 0 then \
+              {os: .os} \
+            else . \
+          end"
+          job_matrix=$(jq -M "${jq_select_matrix}" job_matrix_inputs.json)
+          echo -e "\nFinal job matrix:"
+          echo "${job_matrix}"
+
+          echo "job_matrix=$(jq -Mc <<<"${job_matrix}")" >> $GITHUB_OUTPUT
 
   acceptance:
     name: Acceptance Tests
@@ -365,9 +385,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix:
-        os: ${{ fromJson(needs.set-matrix.outputs.os-matrix) }}
-        tags: ${{ fromJson(needs.set-project-defaults.outputs.acceptance-shard-tags) }}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.job-matrix) }}
     env:
       ACCEPTANCE_WORKING_DIR: |-
         ${{ format('{0}/{1}/{2}',
