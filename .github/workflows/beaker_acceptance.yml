@@ -328,12 +328,19 @@ jobs:
           # and add acceptance-shard-tags to split the tests into
           # smaller groups to avoid timeouts.
           acceptance_shard_tags=$(jq -Mc '."acceptance-shard-tags"' project_defaults.json)
-          if [[ "${QEMU}" == "true" ]] &&
-             jq -e 'length > 0' <<< "${acceptance_shard_tags}" > /dev/null; then
-            echo "Running under qemu with acceptance_shard_tags set to '${acceptance_shard_tags}'; limiting os matrix."
-            limited_os_matrix=$(jq -Mc <<< "${DEFAULT_OS_ARM64_SHARDED}")
-            echo "Resetting os to ${limited_os_matrix}"
-            echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
+          if [[ "${QEMU}" == "true" ]]; then
+            if jq -e 'length > 0' <<< "${acceptance_shard_tags}" > /dev/null; then
+              echo "Running under qemu with acceptance_shard_tags set to '${acceptance_shard_tags}'; limiting os matrix."
+              limited_os_matrix=$(jq -Mc <<< "${DEFAULT_OS_ARM64_SHARDED}")
+              echo "Resetting os to ${limited_os_matrix}"
+              echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
+            elif [[ "${SUITE_NAME}" != "openvox-agent" ]]; then
+              echo "Running under qemu; excluding ubuntu from the os matrix (ubuntu arm64 guests under qemu were exceeding gha 6 hour timeouts)."
+              filter_jq='map(select(.[0] != "ubuntu"))'
+              limited_os_matrix=$(jq -Mc "${filter_jq}" <<< "${DEFAULT_OS}")
+              echo "Resetting os to ${limited_os_matrix}"
+              echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
+            fi
           fi
 
   set-matrix:
