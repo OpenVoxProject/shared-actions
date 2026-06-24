@@ -86,6 +86,21 @@ on:
         required: false
         type: string
         default: 'https://s3.osuosl.org/openvox-artifacts'
+      guest-arch:
+        description: |-
+          The architecture of the guest VMs to run the acceptance tests
+          on. This is used by the nested_vms action to determine which
+          VM images to use.
+
+          If not provided, the default is x86_64.
+
+          NOTE: Currently only x86_64 *runners* support nested
+          virtualization, so if guest-arch is set to arm64, the
+          nested_vms will run under qemu and be quite a bit slower
+          (5x-20x).
+        required: false
+        type: string
+        default: 'x86_64'
 
 env:
   # Suppress warnings about Bolt gem versus package use.
@@ -93,7 +108,7 @@ env:
   # The Ruby version to use for the project being tested.
   # This is used to install Ruby and run Bundler when
   # running the project's Beaker acceptance suite.
-  RUBY_VERSION: '3.3'
+  RUBY_VERSION: '3.4'
 
 jobs:
   set-project-defaults:
@@ -106,6 +121,7 @@ jobs:
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
       acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
       acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
+      acceptance-shard-tags: ${{ steps.set-defaults.outputs.acceptance_shard_tags }}
       beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
       os: ${{ steps.set-defaults.outputs.os }}
       os-add: ${{ steps.set-defaults.outputs.os_add }}
@@ -129,6 +145,12 @@ jobs:
               ["ubuntu", "24.04"],
               ["ubuntu", "26.04"]
             ]
+          DEFAULT_OS_ARM64_SHARDED: |-
+            [
+              ["rocky", "9"],
+              ["debian", "13"]
+            ]
+          QEMU: ${{ (inputs.guest-arch == 'arm64' && runner.arch != 'ARM64') && 'true' || 'false' }}
           PROJECT_DEFAULTS: |-
             {
               "openvox": {
@@ -143,6 +165,12 @@ jobs:
                 "acceptance-tests": [
                   "tests"
                 ],
+                "acceptance-shard-tags": [
+                  "shard:group1",
+                  "shard:group2",
+                  "shard:group3",
+                  "shard:group4"
+                ],
                 "beaker-options": {
                   "helper":       "lib/helper.rb",
                   "options_file": "config/aio/options.rb"
@@ -153,8 +181,7 @@ jobs:
                     "role": "primary",
                     "count": 1,
                     "cpus": 4,
-                    "mem_mb": 8192,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 8192
                   }
                 ]
               },
@@ -173,16 +200,13 @@ jobs:
                 "beaker-options": {
                   "helper":       "lib/helper.rb"
                 },
-                "os-add": [
-                  ["debian", "13", "amd64", "daily-latest"]
-                ],
+                "os-add": [],
                 "vms": [
                   {
                     "role": "agent",
                     "count": 1,
                     "cpus": 2,
-                    "mem_mb": 4096,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 4096
                   }
                 ]
               },
@@ -193,7 +217,7 @@ jobs:
                 "install-termini": true,
                 "acceptance-working-dir": "./",
                 "acceptance-pre-suite": [
-                  "acceptance/suites/pre_suite/openvox/configure_type_defaults.rb",
+                  "acceptance/suites/pre_suite/openvox",
                   "acceptance/suites/pre_suite/foss/00_setup_environment.rb",
                   "acceptance/suites/pre_suite/foss/070_InstallCACerts.rb",
                   "acceptance/suites/pre_suite/foss/10_update_ca_certs.rb",
@@ -218,15 +242,13 @@ jobs:
                     "role": "primary",
                     "count": 1,
                     "cpus": 4,
-                    "mem_mb": 8192,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 8192
                   },
                   {
                     "role": "agent",
                     "count": 1,
                     "cpus": 2,
-                    "mem_mb": 2048,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 4096
                   }
                 ]
               },
@@ -262,15 +284,13 @@ jobs:
                     "role": "primary",
                     "count": 1,
                     "cpus": 4,
-                    "mem_mb": 8192,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 8192
                   },
                   {
                     "role": "agent",
                     "count": 1,
                     "cpus": 2,
-                    "mem_mb": 2048,
-                    "cpu_mode": "host-model"
+                    "mem_mb": 4096
                   }
                 ]
               }
@@ -290,6 +310,7 @@ jobs:
             "acceptance-working-dir"
             "acceptance-pre-suite"
             "acceptance-tests"
+            "acceptance-shard-tags"
             "beaker-options"
             "os"
             "os-add"
@@ -302,25 +323,75 @@ jobs:
             echo "${output_name}=${default}" >> $GITHUB_OUTPUT
           done
 
+          # If we are running under qemu and the defaults includes
+          # acceptance-shard-tags, need to limit the os matrix
+          # and add acceptance-shard-tags to split the tests into
+          # smaller groups to avoid timeouts.
+          acceptance_shard_tags=$(jq -Mc '."acceptance-shard-tags"' project_defaults.json)
+          if [[ "${QEMU}" == "true" ]]; then
+            if jq -e 'length > 0' <<< "${acceptance_shard_tags}" > /dev/null; then
+              echo "Running under qemu with acceptance_shard_tags set to '${acceptance_shard_tags}'; limiting os matrix."
+              limited_os_matrix=$(jq -Mc <<< "${DEFAULT_OS_ARM64_SHARDED}")
+              echo "Resetting os to ${limited_os_matrix}"
+              echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
+            elif [[ "${SUITE_NAME}" != "openvox-agent" ]]; then
+              echo "Running under qemu; excluding ubuntu from the os matrix (ubuntu arm64 guests under qemu were exceeding gha 6 hour timeouts)."
+              filter_jq='map(select(.[0] != "ubuntu"))'
+              limited_os_matrix=$(jq -Mc "${filter_jq}" <<< "${DEFAULT_OS}")
+              echo "Resetting os to ${limited_os_matrix}"
+              echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
+            fi
+          fi
+
   set-matrix:
     needs: set-project-defaults
     runs-on: ubuntu-24.04
     outputs:
-      os-matrix: ${{ steps.set-matrix.outputs.os_matrix }}
+      job-matrix: ${{ steps.set-matrix.outputs.job_matrix }}
     steps:
       - id: set-matrix
         env:
           OS: ${{ needs.set-project-defaults.outputs.os }}
           OS_ADD: ${{ needs.set-project-defaults.outputs.os-add }}
+          ARCH: ${{ inputs.guest-arch || 'x86_64' }}
+          ACCEPTANCE_SHARD_TAGS: ${{ needs.set-project-defaults.outputs.acceptance-shard-tags }}
         run: |-
-          cat > matrix_inputs.json <<EOF
+          cat > os_matrix_inputs.json <<EOF
           [
             ${OS},
             ${OS_ADD}
           ]
           EOF
-          cat matrix_inputs.json
-          echo "os_matrix=$(jq --monochrome-output --compact-output 'add | unique' matrix_inputs.json)" >> $GITHUB_OUTPUT
+          cat os_matrix_inputs.json
+          unique_os_matrix=$(jq -M 'add | unique' os_matrix_inputs.json)
+          jq_inject_arch="map( \
+            if length == 2 then \
+              . + [\"${ARCH}\"] \
+            else . end \
+          )"
+          os_matrix_with_arch=$(jq -M "${jq_inject_arch}" <<< "${unique_os_matrix}")
+          echo -e "\nGenerated os-matrix with architecture:"
+          echo "${os_matrix_with_arch}"
+
+          cat > job_matrix_inputs.json <<EOF
+          {
+            "os": ${os_matrix_with_arch},
+            "tags": ${ACCEPTANCE_SHARD_TAGS}
+          }
+          EOF
+          echo -e "\nInitial job matrix inputs:"
+          cat job_matrix_inputs.json
+
+          jq_select_matrix="if \
+            (.tags | length) == 0 then \
+              {os: .os} \
+            else . \
+          end"
+          job_matrix=$(jq -M "${jq_select_matrix}" job_matrix_inputs.json)
+          echo -e "\nFinal job matrix:"
+          echo "${job_matrix}"
+
+          echo "job_matrix=$(jq -Mc <<<"${job_matrix}")" >> $GITHUB_OUTPUT
 
   acceptance:
     name: Acceptance Tests
@@ -328,8 +399,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix:
-        os: ${{ fromJson(needs.set-matrix.outputs.os-matrix) }}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.job-matrix) }}
     env:
       ACCEPTANCE_WORKING_DIR: |-
         ${{ format('{0}/{1}/{2}',
@@ -355,11 +425,6 @@ jobs:
           image_version: ${{ matrix.os[3] }}
           host-root-access: true
           install-openvox: false
-          # Note: the cpu_mode is set to host-model for the sake of
-          # el-9 which expects at least x86_64-2 arch. This depends on
-          # the runner's architecture being sufficient, and there is
-          # probably a better way to get this set on the libvirt
-          # domain instead.
           vms: ${{ needs.set-project-defaults.outputs.vms }}
 
       - name: Write Install OpenVox Params
@@ -465,6 +530,7 @@ jobs:
             ${{ needs.set-project-defaults.outputs.acceptance-pre-suite || '[]' }}
           TESTS_ARRAY: |-
             ${{ needs.set-project-defaults.outputs.acceptance-tests || '[]' }}
+          TAGS: ${{ matrix.tags && toJson(matrix.tags) || '[]' }}
           BEAKER_OPTIONS: |-
             ${{ needs.set-project-defaults.outputs.beaker-options || '{}' }}
         run: |-
@@ -485,13 +551,31 @@ jobs:
               "preserve_hosts":            "always",
               "type":                      "aio",
               "pre_suite": ${PRE_SUITE_ARRAY},
-              "tests": ${TESTS_ARRAY}
+              "tests": ${TESTS_ARRAY},
+              "test_tag_and": ${TAGS}
             },
             ${BEAKER_OPTIONS}
           ]
           EOF
           cat beaker.yml.inputs
           jq 'add' beaker.yml.inputs | yq -P > .beaker.yml
+          cat .beaker.yml
+
+      - name: Increase timeouts for arm64 guests running under qemu
+        if: inputs.guest-arch == 'arm64' && runner.arch != 'ARM64'
+        working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+        run: |-
+          # Increase the default timeouts (a Beaker pre-suite step
+          # will take update the actual defaults/units)
+          # curl-retries and puppetserver start and reload timeouts
+          # are used by several suites. The
+          # puppetserver-foreground-timeout is specific to the
+          # openvox-server suite.
+          yq -i \
+            '.["master-start-curl-retries"]   = 240 |
+             .["puppetserver-foreground-timeout"] = 360 |
+             .["puppetserver-start-timeout"]  = 600 |
+             .["puppetserver-reload-timeout"] = 240' .beaker.yml
           cat .beaker.yml
 
       - name: Run Beaker

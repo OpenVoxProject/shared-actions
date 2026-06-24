@@ -51,3 +51,51 @@ openvox-server repositories in the `.github/workflows` directory.
 
 See [beaker_acceptance.yml](.github/workflows/beaker_acceptance.yml)
 for parameter details.
+
+#### Arm64 Support
+
+You can run the `beaker_acceptance` workflow on arm64 guests in gha by
+setting `guest_arch` to `arm64`. Currently though this has serious
+limitations due to the lack of kvm support on the gha arm64 runners.
+
+* https://github.com/actions/runner-images/issues/14062
+
+Consequently, the kvm_automation_tooling module runs the arm64 guests
+emulated with qemu instead, and they are *very* slow. Many of the
+suites hit the gha 6 hour job timeout if run without special
+provisions.
+
+The workflow makes several adjustments when it detects that it will be
+running the guests in qemu.
+
+For openvox it reduces the os platforms to DEFAULT_OS_ARM64_PLATFORMS
+and adds acceptance-shard-tags to the the job matrix to limit the
+number of tests executed per runner. With these two concessions, the
+openvox suite completes in about 4 hours (at least on the couple of
+platforms in that default matrix).
+
+The openvox-agent suite runs normally, albeit slowly. Except that
+rocky10 fails currently because `which` is not installed on the arm64
+image for unknown reasons, and this breaks the
+openvox/packaging/acceptance/tests/validate_vendored_ruby.rb test.
+
+For openvox-server, all the ubuntu platforms are removed from the
+matrix, as they are by far the slowest. Alma9/rocky9 are known to
+complete successfully at the moment. The other platforms have
+scattered but consistent timing failures, mostly related to ssh?
+Except el10 which has a postgresql repo gpg key issue that I did not
+run down.
+
+For openvoxdb, ubuntu platforms are removed as well, but no work has
+been done in the openvoxdb suite to accomodate timeouts and such, and
+it generally fails in the presuite.
+
+In general, the workflow adds additional timeouts to the .beaker.yml
+configuration, though again, those are only helpful if the beaker
+suite being run makes use of them. Currently openvox and
+openvox-server suites do, but openvoxdb does not.
+
+I don't know why ubuntu qemu arm64 runs 2-4x slower than el/debian,
+but it does and was consistently hitting the 6 hour gha job timeout on
+all the suites except openvox-agent, which is why it's excluded
+everywhere but there.
