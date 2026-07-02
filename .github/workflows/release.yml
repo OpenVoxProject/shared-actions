@@ -64,7 +64,7 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ inputs.base-branch }}
           fetch-depth: 0
@@ -72,7 +72,7 @@ jobs:
 
       - name: Setup Ruby
         if: inputs.bump_to_rc_after_release || inputs.include_changelog_in_release
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -186,7 +186,7 @@ jobs:
 
       - name: Commit version bump
         if: inputs.bump_to_rc_after_release
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
           commit_user_email: ${{ env.GIT_COMMITTER_EMAIL }}

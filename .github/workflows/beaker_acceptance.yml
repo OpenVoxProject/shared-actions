@@ -407,7 +407,7 @@ jobs:
                    needs.set-project-defaults.outputs.repository,
                    needs.set-project-defaults.outputs.acceptance-working-dir) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # Ensure that we checkout the project we want to test rather
           # than the repository that this workflow is being called
@@ -417,7 +417,7 @@ jobs:
           path: ${{ needs.set-project-defaults.outputs.repository }}
 
       - id: vm-cluster
-        uses: jpartlow/nested_vms@v1
+        uses: jpartlow/nested_vms@7f2caec8ae0a5c01eb8780cdb5891bd96acfab3e # 1.4.0
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
@@ -513,7 +513,7 @@ jobs:
           cat "${HOSTS_YAML}"
 
       - name: Install Ruby and Run Bundler for Acceptance Tests
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
