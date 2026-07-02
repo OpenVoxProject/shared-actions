@@ -47,12 +47,12 @@ jobs:
       # This checks out the release branch, because the vox:build task will
       # check out the tag itself.
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch }}
 
       - name: Checkout platform config
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: OpenVoxProject/shared-actions
           ref: main
