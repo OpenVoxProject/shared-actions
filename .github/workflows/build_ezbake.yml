@@ -50,12 +50,12 @@ jobs:
       # This checks out the release branch, because the vox:build task will
       # check out the tag itself.
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ inputs.branch }}
 
       - name: Checkout platform config
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: OpenVoxProject/shared-actions
           ref: main
@@ -73,13 +73,13 @@ jobs:
           echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
 
       - name: Install Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
         with:
           ruby-version: '4.0'
           bundler-cache: true
 
       - id: docker-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/ezbake-builder.tar
           key: docker-ezbake-${{ hashFiles('Dockerfile') }}
@@ -93,7 +93,7 @@ jobs:
             docker save ezbake-builder -o /tmp/ezbake-builder.tar
           fi
 
-      - uses: actions/cache/save@v6
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: always() && steps.docker-cache.outputs.cache-hit != 'true'
         with:
           path: /tmp/ezbake-builder.tar
