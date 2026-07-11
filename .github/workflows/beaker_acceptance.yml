@@ -126,222 +126,38 @@ jobs:
       os: ${{ steps.set-defaults.outputs.os }}
       os-add: ${{ steps.set-defaults.outputs.os_add }}
       vms: ${{ steps.set-defaults.outputs.vms }}
+      server-capable-os: ${{ steps.set-defaults.outputs.server_capable_os }}
+      server-fallback-os: ${{ steps.set-defaults.outputs.server_fallback_os }}
     steps:
+      - name: Checkout platform config
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: OpenVoxProject/shared-actions
+          ref: main
+          path: .shared-actions
+          sparse-checkout: |
+            platforms.json
+            scripts
+          sparse-checkout-cone-mode: false
+
       - id: set-defaults
         env:
           SUITE_NAME: ${{ inputs.suite-name }}
-          DEFAULT_OS: |-
-            [
-              ["almalinux", "8"],
-              ["almalinux", "9"],
-              ["almalinux", "10"],
-              ["debian", "11"],
-              ["debian", "12"],
-              ["debian", "13"],
-              ["rocky", "8"],
-              ["rocky", "9"],
-              ["rocky", "10"],
-              ["ubuntu", "22.04"],
-              ["ubuntu", "24.04"],
-              ["ubuntu", "26.04"]
-            ]
-          DEFAULT_OS_ARM64_SHARDED: |-
-            [
-              ["rocky", "9"],
-              ["debian", "13"]
-            ]
+          OPENVOX_COLLECTION: ${{ inputs.openvox-collection }}
           QEMU: ${{ (inputs.guest-arch == 'arm64' && runner.arch != 'ARM64') && 'true' || 'false' }}
-          PROJECT_DEFAULTS: |-
-            {
-              "openvox": {
-                "repository": "openvox",
-                "install-openvox-server": true,
-                "install-openvoxdb": false,
-                "install-termini": false,
-                "acceptance-working-dir": "acceptance",
-                "acceptance-pre-suite": [
-                  "pre-suite"
-                ],
-                "acceptance-tests": [
-                  "tests"
-                ],
-                "acceptance-shard-tags": [
-                  "shard:group1",
-                  "shard:group2",
-                  "shard:group3",
-                  "shard:group4"
-                ],
-                "beaker-options": {
-                  "helper":       "lib/helper.rb",
-                  "options_file": "config/aio/options.rb"
-                },
-                "os-add": [],
-                "vms": [
-                  {
-                    "role": "primary",
-                    "count": 1,
-                    "cpus": 4,
-                    "mem_mb": 8192
-                  }
-                ]
-              },
-              "openvox-agent": {
-                "repository": "openvox",
-                "install-openvox-server": false,
-                "install-openvoxdb": false,
-                "install-termini": false,
-                "acceptance-working-dir": "packaging/acceptance",
-                "acceptance-pre-suite": [
-                  "pre-suite/configure_type_defaults.rb"
-                ],
-                "acceptance-tests": [
-                  "tests"
-                ],
-                "beaker-options": {
-                  "helper":       "lib/helper.rb"
-                },
-                "os-add": [],
-                "vms": [
-                  {
-                    "role": "agent",
-                    "count": 1,
-                    "cpus": 2,
-                    "mem_mb": 4096
-                  }
-                ]
-              },
-              "openvox-server": {
-                "repository": "openvox-server",
-                "install-openvox-server": true,
-                "install-openvoxdb": true,
-                "install-termini": true,
-                "acceptance-working-dir": "./",
-                "acceptance-pre-suite": [
-                  "acceptance/suites/pre_suite/openvox",
-                  "acceptance/suites/pre_suite/foss/00_setup_environment.rb",
-                  "acceptance/suites/pre_suite/foss/070_InstallCACerts.rb",
-                  "acceptance/suites/pre_suite/foss/10_update_ca_certs.rb",
-                  "acceptance/suites/pre_suite/foss/15_prep_locales.rb",
-                  "acceptance/suites/pre_suite/foss/71_smoke_test_puppetserver.rb",
-                  "acceptance/suites/pre_suite/foss/80_configure_puppet.rb",
-                  "acceptance/suites/pre_suite/foss/90_validate_sign_cert.rb",
-                  "acceptance/suites/pre_suite/foss/95_install_pdb.rb",
-                  "acceptance/suites/pre_suite/foss/99_collect_data.rb"
-                ],
-                "acceptance-tests": [
-                  "acceptance/suites/tests"
-                ],
-                "beaker-options": {
-                  "helper":       "acceptance/lib/helper.rb",
-                  "load_path":    "acceptance/lib",
-                  "options_file": "acceptance/config/beaker/options.rb"
-                },
-                "os-add": [],
-                "vms": [
-                  {
-                    "role": "primary",
-                    "count": 1,
-                    "cpus": 4,
-                    "mem_mb": 8192
-                  },
-                  {
-                    "role": "agent",
-                    "count": 1,
-                    "cpus": 2,
-                    "mem_mb": 4096
-                  }
-                ]
-              },
-              "openvoxdb": {
-                "repository": "openvoxdb",
-                "install-openvox-server": true,
-                "install-openvoxdb": true,
-                "install-termini": true,
-                "acceptance-working-dir": "./",
-                "acceptance-pre-suite": [
-                  "acceptance/setup/openvox/configure_type_defaults.rb",
-                  "acceptance/setup/pre_suite/00_setup_test_env.rb",
-                  "acceptance/setup/pre_suite/10_setup_proxies.rb",
-                  "acceptance/setup/pre_suite/15_prep_locales.rb",
-                  "acceptance/setup/pre_suite/20_install_puppet.rb",
-                  "acceptance/setup/pre_suite/30_generate_ssl_certs.rb",
-                  "acceptance/setup/pre_suite/40_install_deps.rb",
-                  "acceptance/setup/pre_suite/50_install_modules.rb",
-                  "acceptance/setup/pre_suite/75_clean_out_puppet5_repos.rb",
-                  "acceptance/setup/pre_suite/80_add_dev_repo.rb",
-                  "acceptance/setup/openvox/configure_openvoxdb.rb"
-                ],
-                "acceptance-tests": [
-                  "acceptance/tests"
-                ],
-                "beaker-options": {
-                  "helper":       "acceptance/helper.rb",
-                  "options_file": "acceptance/options/openvox.rb"
-                },
-                "os-add": [],
-                "vms": [
-                  {
-                    "role": "primary",
-                    "count": 1,
-                    "cpus": 4,
-                    "mem_mb": 8192
-                  },
-                  {
-                    "role": "agent",
-                    "count": 1,
-                    "cpus": 2,
-                    "mem_mb": 4096
-                  }
-                ]
-              }
-            }
         run: |-
           set -e
-
-          # Pick out the defaults for the project being tested.
-          jq ".\"${SUITE_NAME}\" | .os = ${DEFAULT_OS}" <<< "${PROJECT_DEFAULTS}" > project_defaults.json
-          cat project_defaults.json
-
-          parameters=(
-            "repository"
-            "install-openvox-server"
-            "install-openvoxdb"
-            "install-termini"
-            "acceptance-working-dir"
-            "acceptance-pre-suite"
-            "acceptance-tests"
-            "acceptance-shard-tags"
-            "beaker-options"
-            "os"
-            "os-add"
-            "vms"
-          )
-          for param in "${parameters[@]}"; do
-            output_name=${param//-/_}
-            default=$(jq -rMc ".\"${param}\"" project_defaults.json)
-            echo "Setting ${output_name} to ${default}"
-            echo "${output_name}=${default}" >> $GITHUB_OUTPUT
-          done
-
-          # If we are running under qemu and the defaults includes
-          # acceptance-shard-tags, need to limit the os matrix
-          # and add acceptance-shard-tags to split the tests into
-          # smaller groups to avoid timeouts.
-          acceptance_shard_tags=$(jq -Mc '."acceptance-shard-tags"' project_defaults.json)
-          if [[ "${QEMU}" == "true" ]]; then
-            if jq -e 'length > 0' <<< "${acceptance_shard_tags}" > /dev/null; then
-              echo "Running under qemu with acceptance_shard_tags set to '${acceptance_shard_tags}'; limiting os matrix."
-              limited_os_matrix=$(jq -Mc <<< "${DEFAULT_OS_ARM64_SHARDED}")
-              echo "Resetting os to ${limited_os_matrix}"
-              echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
-            elif [[ "${SUITE_NAME}" != "openvox-agent" ]]; then
-              echo "Running under qemu; excluding ubuntu from the os matrix (ubuntu arm64 guests under qemu were exceeding gha 6 hour timeouts)."
-              filter_jq='map(select(.[0] != "ubuntu"))'
-              limited_os_matrix=$(jq -Mc "${filter_jq}" <<< "${DEFAULT_OS}")
-              echo "Resetting os to ${limited_os_matrix}"
-              echo "os=${limited_os_matrix}" >> $GITHUB_OUTPUT
-            fi
-          fi
+          # Compute the suite's acceptance config and derived OS matrix from
+          # platforms.json (see .shared-actions/scripts/project-config.sh).
+          config=$(.shared-actions/scripts/project-config.sh \
+            "${SUITE_NAME}" "${OPENVOX_COLLECTION}" "${QEMU}")
+          echo "Computed acceptance config:"
+          jq . <<< "${config}"
+          # Emit every config key as a step output (hyphens -> underscores).
+          # String values are written raw; arrays and objects as compact JSON.
+          jq -r 'to_entries[]
+            | "\(.key | gsub("-"; "_"))=\(.value | if type == "string" then . else tojson end)"' \
+            <<< "${config}" >> "$GITHUB_OUTPUT"
 
   set-matrix:
     needs: set-project-defaults
@@ -349,6 +165,15 @@ jobs:
     outputs:
       job-matrix: ${{ steps.set-matrix.outputs.job_matrix }}
     steps:
+      - name: Checkout acceptance scripts
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: OpenVoxProject/shared-actions
+          ref: main
+          path: .shared-actions
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: false
+
       - id: set-matrix
         env:
           OS: ${{ needs.set-project-defaults.outputs.os }}
@@ -356,42 +181,12 @@ jobs:
           ARCH: ${{ inputs.guest-arch || 'x86_64' }}
           ACCEPTANCE_SHARD_TAGS: ${{ needs.set-project-defaults.outputs.acceptance-shard-tags }}
         run: |-
-          cat > os_matrix_inputs.json <<EOF
-          [
-            ${OS},
-            ${OS_ADD}
-          ]
-          EOF
-          cat os_matrix_inputs.json
-          unique_os_matrix=$(jq -M 'add | unique' os_matrix_inputs.json)
-          jq_inject_arch="map( \
-            if length == 2 then \
-              . + [\"${ARCH}\"] \
-            else . end \
-          )"
-          os_matrix_with_arch=$(jq -M "${jq_inject_arch}" <<< "${unique_os_matrix}")
-          echo -e "\nGenerated os-matrix with architecture:"
-          echo "${os_matrix_with_arch}"
-
-          cat > job_matrix_inputs.json <<EOF
-          {
-            "os": ${os_matrix_with_arch},
-            "tags": ${ACCEPTANCE_SHARD_TAGS}
-          }
-          EOF
-          echo -e "\nInitial job matrix inputs:"
-          cat job_matrix_inputs.json
-
-          jq_select_matrix="if \
-            (.tags | length) == 0 then \
-              {os: .os} \
-            else . \
-          end"
-          job_matrix=$(jq -M "${jq_select_matrix}" job_matrix_inputs.json)
-          echo -e "\nFinal job matrix:"
-          echo "${job_matrix}"
-
-          echo "job_matrix=$(jq -Mc <<<"${job_matrix}")" >> $GITHUB_OUTPUT
+          set -e
+          job_matrix=$(.shared-actions/scripts/build-job-matrix.sh \
+            "${OS}" "${OS_ADD}" "${ARCH}" "${ACCEPTANCE_SHARD_TAGS}")
+          echo "Job matrix:"
+          jq . <<< "${job_matrix}"
+          echo "job_matrix=${job_matrix}" >> "$GITHUB_OUTPUT"
 
   acceptance:
     name: Acceptance Tests
@@ -416,16 +211,48 @@ jobs:
           ref: ${{ inputs.ref }}
           path: ${{ needs.set-project-defaults.outputs.repository }}
 
+      - name: Checkout acceptance scripts
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: OpenVoxProject/shared-actions
+          ref: main
+          path: .shared-actions
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: false
+
+      - id: set-topology
+        name: Build cluster topology
+        env:
+          SUITE_NAME: ${{ inputs.suite-name }}
+          NATIVE_OS: ${{ matrix.os[0] }}
+          NATIVE_VER: ${{ matrix.os[1] }}
+          NATIVE_ARCH: ${{ matrix.os[2] || 'x86_64' }}
+          BASE_VMS: ${{ needs.set-project-defaults.outputs.vms }}
+          SERVER_CAPABLE_OS: ${{ needs.set-project-defaults.outputs.server-capable-os }}
+          SERVER_FALLBACK_OS: ${{ needs.set-project-defaults.outputs.server-fallback-os }}
+        run: |-
+          set -e
+          # Resolve the VM cluster for this cell, applying the openvox
+          # server-fallback when needed (see
+          # .shared-actions/scripts/build-cluster-topology.sh).
+          topology=$(.shared-actions/scripts/build-cluster-topology.sh \
+            "${SUITE_NAME}" "${NATIVE_OS}" "${NATIVE_VER}" "${NATIVE_ARCH}" \
+            "${BASE_VMS}" "${SERVER_CAPABLE_OS}" "${SERVER_FALLBACK_OS}")
+          echo "Cluster topology:"
+          jq . <<< "${topology}"
+          jq -r 'to_entries[] | "\(.key)=\(.value | if type == "string" then . else tojson end)"' \
+            <<< "${topology}" >> "$GITHUB_OUTPUT"
+
       - id: vm-cluster
         uses: jpartlow/nested_vms@7f2caec8ae0a5c01eb8780cdb5891bd96acfab3e # 1.4.0
         with:
-          os: ${{ matrix.os[0] }}
-          os-version: ${{ matrix.os[1] }}
-          os-arch: ${{ matrix.os[2] || 'x86_64' }}
+          os: ${{ steps.set-topology.outputs.os }}
+          os-version: ${{ steps.set-topology.outputs.os_version }}
+          os-arch: ${{ steps.set-topology.outputs.os_arch }}
           image_version: ${{ matrix.os[3] }}
           host-root-access: true
           install-openvox: false
-          vms: ${{ needs.set-project-defaults.outputs.vms }}
+          vms: ${{ steps.set-topology.outputs.vms }}
 
       - name: Write Install OpenVox Params
         working-directory: kvm_automation_tooling

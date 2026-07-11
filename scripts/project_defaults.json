@@ -1,0 +1,143 @@
+{
+  "openvox": {
+    "repository": "openvox",
+    "install-openvox-server": true,
+    "install-openvoxdb": false,
+    "install-termini": false,
+    "acceptance-working-dir": "acceptance",
+    "acceptance-pre-suite": [
+      "pre-suite"
+    ],
+    "acceptance-tests": [
+      "tests"
+    ],
+    "acceptance-shard-tags": [
+      "shard:group1",
+      "shard:group2",
+      "shard:group3",
+      "shard:group4"
+    ],
+    "beaker-options": {
+      "helper":       "lib/helper.rb",
+      "options_file": "config/aio/options.rb"
+    },
+    "os-add": [],
+    "vms": [
+      {
+        "role": "primary",
+        "count": 1,
+        "cpus": 4,
+        "mem_mb": 8192
+      }
+    ]
+  },
+  "openvox-agent": {
+    "repository": "openvox",
+    "install-openvox-server": false,
+    "install-openvoxdb": false,
+    "install-termini": false,
+    "acceptance-working-dir": "packaging/acceptance",
+    "acceptance-pre-suite": [
+      "pre-suite/configure_type_defaults.rb"
+    ],
+    "acceptance-tests": [
+      "tests"
+    ],
+    "beaker-options": {
+      "helper":       "lib/helper.rb"
+    },
+    "os-add": [],
+    "vms": [
+      {
+        "role": "agent",
+        "count": 1,
+        "cpus": 2,
+        "mem_mb": 4096
+      }
+    ]
+  },
+  "openvox-server": {
+    "repository": "openvox-server",
+    "install-openvox-server": true,
+    "install-openvoxdb": true,
+    "install-termini": true,
+    "acceptance-working-dir": "./",
+    "acceptance-pre-suite": [
+      "acceptance/suites/pre_suite/openvox",
+      "acceptance/suites/pre_suite/foss/00_setup_environment.rb",
+      "acceptance/suites/pre_suite/foss/070_InstallCACerts.rb",
+      "acceptance/suites/pre_suite/foss/10_update_ca_certs.rb",
+      "acceptance/suites/pre_suite/foss/15_prep_locales.rb",
+      "acceptance/suites/pre_suite/foss/71_smoke_test_puppetserver.rb",
+      "acceptance/suites/pre_suite/foss/80_configure_puppet.rb",
+      "acceptance/suites/pre_suite/foss/90_validate_sign_cert.rb",
+      "acceptance/suites/pre_suite/foss/95_install_pdb.rb",
+      "acceptance/suites/pre_suite/foss/99_collect_data.rb"
+    ],
+    "acceptance-tests": [
+      "acceptance/suites/tests"
+    ],
+    "beaker-options": {
+      "helper":       "acceptance/lib/helper.rb",
+      "load_path":    "acceptance/lib",
+      "options_file": "acceptance/config/beaker/options.rb"
+    },
+    "os-add": [],
+    "vms": [
+      {
+        "role": "primary",
+        "count": 1,
+        "cpus": 4,
+        "mem_mb": 8192
+      },
+      {
+        "role": "agent",
+        "count": 1,
+        "cpus": 2,
+        "mem_mb": 4096
+      }
+    ]
+  },
+  "openvoxdb": {
+    "repository": "openvoxdb",
+    "install-openvox-server": true,
+    "install-openvoxdb": true,
+    "install-termini": true,
+    "acceptance-working-dir": "./",
+    "acceptance-pre-suite": [
+      "acceptance/setup/openvox/configure_type_defaults.rb",
+      "acceptance/setup/pre_suite/00_setup_test_env.rb",
+      "acceptance/setup/pre_suite/10_setup_proxies.rb",
+      "acceptance/setup/pre_suite/15_prep_locales.rb",
+      "acceptance/setup/pre_suite/20_install_puppet.rb",
+      "acceptance/setup/pre_suite/30_generate_ssl_certs.rb",
+      "acceptance/setup/pre_suite/40_install_deps.rb",
+      "acceptance/setup/pre_suite/50_install_modules.rb",
+      "acceptance/setup/pre_suite/75_clean_out_puppet5_repos.rb",
+      "acceptance/setup/pre_suite/80_add_dev_repo.rb",
+      "acceptance/setup/openvox/configure_openvoxdb.rb"
+    ],
+    "acceptance-tests": [
+      "acceptance/tests"
+    ],
+    "beaker-options": {
+      "helper":       "acceptance/helper.rb",
+      "options_file": "acceptance/options/openvox.rb"
+    },
+    "os-add": [],
+    "vms": [
+      {
+        "role": "primary",
+        "count": 1,
+        "cpus": 4,
+        "mem_mb": 8192
+      },
+      {
+        "role": "agent",
+        "count": 1,
+        "cpus": 2,
+        "mem_mb": 4096
+      }
+    ]
+  }
+}
