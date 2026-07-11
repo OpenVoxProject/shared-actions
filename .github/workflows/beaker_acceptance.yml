@@ -121,10 +121,7 @@ jobs:
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
       acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
       acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
-      acceptance-shard-tags: ${{ steps.set-defaults.outputs.acceptance_shard_tags }}
       beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
-      os: ${{ steps.set-defaults.outputs.os }}
-      os-add: ${{ steps.set-defaults.outputs.os_add }}
       vms: ${{ steps.set-defaults.outputs.vms }}
       server-capable-os: ${{ steps.set-defaults.outputs.server_capable_os }}
       server-fallback-os: ${{ steps.set-defaults.outputs.server_fallback_os }}
@@ -171,19 +168,21 @@ jobs:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
           path: .shared-actions
-          sparse-checkout: scripts
+          sparse-checkout: |
+            platforms.json
+            scripts
           sparse-checkout-cone-mode: false
 
       - id: set-matrix
         env:
-          OS: ${{ needs.set-project-defaults.outputs.os }}
-          OS_ADD: ${{ needs.set-project-defaults.outputs.os-add }}
+          SUITE_NAME: ${{ inputs.suite-name }}
+          OPENVOX_COLLECTION: ${{ inputs.openvox-collection }}
           ARCH: ${{ inputs.guest-arch || 'x86_64' }}
-          ACCEPTANCE_SHARD_TAGS: ${{ needs.set-project-defaults.outputs.acceptance-shard-tags }}
+          QEMU: ${{ (inputs.guest-arch == 'arm64' && runner.arch != 'ARM64') && 'true' || 'false' }}
         run: |-
           set -e
           job_matrix=$(.shared-actions/scripts/build-job-matrix.sh \
-            "${OS}" "${OS_ADD}" "${ARCH}" "${ACCEPTANCE_SHARD_TAGS}")
+            "${SUITE_NAME}" "${OPENVOX_COLLECTION}" "${ARCH}" "${QEMU}")
           echo "Job matrix:"
           jq . <<< "${job_matrix}"
           echo "job_matrix=${job_matrix}" >> "$GITHUB_OUTPUT"
