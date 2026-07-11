@@ -122,9 +122,6 @@ jobs:
       acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
       acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
       beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
-      vms: ${{ steps.set-defaults.outputs.vms }}
-      server-capable-os: ${{ steps.set-defaults.outputs.server_capable_os }}
-      server-fallback-os: ${{ steps.set-defaults.outputs.server_fallback_os }}
     steps:
       - name: Checkout platform config
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -216,27 +213,27 @@ jobs:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
           path: .shared-actions
-          sparse-checkout: scripts
+          sparse-checkout: |
+            platforms.json
+            scripts
           sparse-checkout-cone-mode: false
 
       - id: set-topology
         name: Build cluster topology
         env:
           SUITE_NAME: ${{ inputs.suite-name }}
+          OPENVOX_COLLECTION: ${{ inputs.openvox-collection }}
           NATIVE_OS: ${{ matrix.os[0] }}
           NATIVE_VER: ${{ matrix.os[1] }}
           NATIVE_ARCH: ${{ matrix.os[2] || 'x86_64' }}
-          BASE_VMS: ${{ needs.set-project-defaults.outputs.vms }}
-          SERVER_CAPABLE_OS: ${{ needs.set-project-defaults.outputs.server-capable-os }}
-          SERVER_FALLBACK_OS: ${{ needs.set-project-defaults.outputs.server-fallback-os }}
         run: |-
           set -e
           # Resolve the VM cluster for this cell, applying the openvox
           # server-fallback when needed (see
           # .shared-actions/scripts/build-cluster-topology.sh).
           topology=$(.shared-actions/scripts/build-cluster-topology.sh \
-            "${SUITE_NAME}" "${NATIVE_OS}" "${NATIVE_VER}" "${NATIVE_ARCH}" \
-            "${BASE_VMS}" "${SERVER_CAPABLE_OS}" "${SERVER_FALLBACK_OS}")
+            "${SUITE_NAME}" "${OPENVOX_COLLECTION}" \
+            "${NATIVE_OS}" "${NATIVE_VER}" "${NATIVE_ARCH}")
           echo "Cluster topology:"
           jq . <<< "${topology}"
           jq -r 'to_entries[] | "\(.key)=\(.value | if type == "string" then . else tojson end)"' \
