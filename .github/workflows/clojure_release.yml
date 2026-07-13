@@ -9,6 +9,11 @@ on:
         type: string
         required: false
         default: ''
+      java-version:
+        description: 'The java version to use when building the jar.'
+        type: string
+        required: false
+        default: '17'
     secrets:
       github_pat:
         # Provide a fine-grained token with the following repository permissions:
@@ -52,7 +57,7 @@ jobs:
       - name: Setup java
         uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
-          java-version: '17'
+          java-version: ${{ inputs.java-version }}
           distribution: temurin
 
       - name: Install clojure tools
