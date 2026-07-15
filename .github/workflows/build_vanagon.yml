@@ -267,7 +267,16 @@ jobs:
         run: |-
           rm -rf output
           DESCRIBE=$(git describe --abbrev=9)
-          echo "describe=${DESCRIBE//-/.}" >> $GITHUB_OUTPUT
+
+          case "${DESCRIBE}" in
+            *-alpha[0-9]|*-beta[0-9]|*-rc[0-9])
+              printf 'describe=%s\n' "$(sed 's/-/~/' <<<"$DESCRIBE")" >>$GITHUB_OUTPUT
+              ;;
+            *)
+              printf 'describe=%s\n' "${DESCRIBE//-/.}" >>$GITHUB_OUTPUT
+              ;;
+          esac
+
           bundle exec rake "vox:build[${PROJECT_NAME},${BUILD_PLATFORM}]"
 
       - name: Upload build artifacts
