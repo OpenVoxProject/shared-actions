@@ -124,7 +124,7 @@ jobs:
       beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
     steps:
       - name: Checkout platform config
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
@@ -160,7 +160,7 @@ jobs:
       job-matrix: ${{ steps.set-matrix.outputs.job_matrix }}
     steps:
       - name: Checkout acceptance scripts
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
@@ -198,7 +198,7 @@ jobs:
                    needs.set-project-defaults.outputs.repository,
                    needs.set-project-defaults.outputs.acceptance-working-dir) }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Ensure that we checkout the project we want to test rather
           # than the repository that this workflow is being called
@@ -208,7 +208,7 @@ jobs:
           path: ${{ needs.set-project-defaults.outputs.repository }}
 
       - name: Checkout acceptance scripts
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
