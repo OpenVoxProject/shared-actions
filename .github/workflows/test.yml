@@ -11,8 +11,6 @@ jobs:
   automerge:
     name: Enable auto-merge
     if: github.event_name == 'pull_request' && (github.event.pull_request.user.login == 'dependabot[bot]' || github.event.pull_request.user.login == 'renovate[bot]')
-    needs:
-      - unit
     runs-on: ubuntu-latest
     permissions:
       contents: write

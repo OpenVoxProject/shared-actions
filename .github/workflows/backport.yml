@@ -1,14 +1,13 @@
 ---
 name: Backport merged pull request
 
-
 on:
-  workflow_call: {}
+  workflow_call:
     secrets:
-      OPENVOXBOT_SSH_PRIVATE_KEY:
+      ssh_private_key:
         description: 'ssh private key to sign commits'
         required: true
-      OPENVOXBOT_COMMIT_AND_PRS:
+      github_pat:
         # Provide a fine-grained token with the following repository permissions:
         # * Contents: Read and write
         # * Metadata: Read-only (mandatory, default)
@@ -37,7 +36,7 @@ jobs:
       - name: Add SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.OPENVOXBOT_SSH_PRIVATE_KEY }}" > ~/.ssh/github_actions
+          echo "${{ secrets.ssh_private_key }}" > ~/.ssh/github_actions
           chmod 600 ~/.ssh/github_actions
           ssh-agent -a $SSH_AUTH_SOCK > /dev/null
           ssh-add ~/.ssh/github_actions
@@ -53,13 +52,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          token: ${{ secrets.OPENVOXBOT_COMMIT_AND_PRS }}
+          token: ${{ secrets.github_pat }}
           ref: main
       - name: Create backport pull requests
         uses: korthout/backport-action@2e830a1d0b8269505846ddd407a70876913ad1f8 # v4.6.0
         with:
           auto_merge_enabled: true
           auto_merge_method: merge
-          github_token: ${{ secrets.OPENVOXBOT_COMMIT_AND_PRS }}
+          github_token: ${{ secrets.github_pat }}
           git_committer_name: OpenVoxProjectBot
           git_committer_email: 215568489+OpenVoxProjectBot@users.noreply.github.com
