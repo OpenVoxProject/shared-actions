@@ -117,7 +117,7 @@ jobs:
           bundle exec rake "vox:build[${BUILD_REF}]"
 
       - name: Configure OSUOSL CA Certificate for S3
-        if: contains(secrets.S3_ENDPOINT_URL, "s3.osuosl.org")
+        if: contains(secrets.S3_ENDPOINT_URL, 's3.osuosl.org')
         uses: ./.github/actions/setup-osuosl-ca
 
       - name: Upload output to S3
