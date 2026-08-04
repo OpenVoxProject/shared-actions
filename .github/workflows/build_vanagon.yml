@@ -285,6 +285,12 @@ jobs:
           name: build-artifacts-${{ steps.build.outputs.describe }}-${{ matrix.platform }}
           path: ${{ inputs.working_directory }}/output/
 
+      - name: Configure OSUOSL CA Certificate for S3
+        if: >-
+          inputs.upload_to_s3 &&
+          contains(secrets.S3_ENDPOINT_URL, "s3.osuosl.org")
+        uses: ./.github/actions/setup-osuosl-ca
+
       - name: Upload output to S3
         if: ${{ inputs.upload_to_s3 }}
         working-directory: ${{ inputs.working_directory }}
