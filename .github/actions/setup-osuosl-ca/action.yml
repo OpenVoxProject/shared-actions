@@ -8,10 +8,10 @@ description: >-
 
     https://github.com/aws/aws-cli/issues/10389
 
-  This action writes the emSign CA certificate out to a file and then
-  sets the path to that file in the AWS_CA_BUNDLE environment variable.
-  The AWS CLI will read certificates from this variable, unless overriden
-  by something like the "--ca-bundle" CLI flag.
+  This action downloads the latest Mozilla CA bundle, writes it out to a file
+  under $RUNNER_TMP, and then sets the path to that file in the AWS_CA_BUNDLE
+  environment variable. The AWS CLI will read certificates from this variable,
+  unless overriden by something like the "--ca-bundle" CLI flag.
 
 runs:
   using: composite
@@ -23,30 +23,8 @@ runs:
         # is usable from both POSIX and WIN32 contexts.
         osuosl_ca="${RUNNER_TMP//\\//}/osuosl-ca.pem"
 
-        printf 'Writing OSUOSL CA bundle to: %s\n' "${osuosl_ca}"
+        printf 'Downloading Mozilla CA bundle to: %s\n' "${osuosl_ca}"
 
-        cat <<'EOF' >"${osuosl_ca}"
-        emSign Root CA - G1
-        ===================
-        -----BEGIN CERTIFICATE-----
-        MIIDlDCCAnygAwIBAgIKMfXkYgxsWO3W2DANBgkqhkiG9w0BAQsFADBnMQswCQYDVQQGEwJJTjET
-        MBEGA1UECxMKZW1TaWduIFBLSTElMCMGA1UEChMcZU11ZGhyYSBUZWNobm9sb2dpZXMgTGltaXRl
-        ZDEcMBoGA1UEAxMTZW1TaWduIFJvb3QgQ0EgLSBHMTAeFw0xODAyMTgxODMwMDBaFw00MzAyMTgx
-        ODMwMDBaMGcxCzAJBgNVBAYTAklOMRMwEQYDVQQLEwplbVNpZ24gUEtJMSUwIwYDVQQKExxlTXVk
-        aHJhIFRlY2hub2xvZ2llcyBMaW1pdGVkMRwwGgYDVQQDExNlbVNpZ24gUm9vdCBDQSAtIEcxMIIB
-        IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk0u76WaK7p1b1TST0Bsew+eeuGQzf2N4aLTN
-        LnF115sgxk0pvLZoYIr3IZpWNVrzdr3YzZr/k1ZLpVkGoZM0Kd0WNHVO8oG0x5ZOrRkVUkr+PHB1
-        cM2vK6sVmjM8qrOLqs1D/fXqcP/tzxE7lM5OMhbTI0Aqd7OvPAEsbO2ZLIvZTmmYsvePQbAyeGHW
-        DV/D+qJAkh1cF+ZwPjXnorfCYuKrpDhMtTk1b+oDafo6VGiFbdbyL0NVHpENDtjVaqSW0RM8LHhQ
-        6DqS0hdW5TUaQBw+jSztOd9C4INBdN+jzcKGYEho42kLVACL5HZpIQ15TjQIXhTCzLG3rdd8cIrH
-        hQIDAQABo0IwQDAdBgNVHQ4EFgQU++8Nhp6w492pufEhF38+/PB3KxowDgYDVR0PAQH/BAQDAgEG
-        MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAFn/8oz1h31xPaOfG1vR2vjTnGs2
-        vZupYeveFix0PZ7mddrXuqe8QhfnPZHr5X3dPpzxz5KsbEjMwiI/aTvFthUvozXGaCocV685743Q
-        NcMYDHsAVhzNixl03r4PEuDQqqE/AjSxcM6dGNYIAwlG7mDgfrbESQRRfXBgvKqy/3lyeqYdPV8q
-        +Mri/Tm3R7nrft8EI6/6nAYH6ftjk4BAtcZsCjEozgyfz7MjNYBBjWzEN3uBL4ChQEKF6dk4jeih
-        U80Bv2noWgbyRQuQ+q7hv53yrlc8pa6yVvSLZUDp/TGBLPQ5Cdjua6e0ph0VpZj3AYHYhX3zUVxx
-        iN66zB+Afko=
-        -----END CERTIFICATE-----
-        EOF
+        curl -sSL https://curl.se/ca/cacert.pem -o "${osuosl_ca}"
 
         printf 'AWS_CA_BUNDLE=%s' "${osuosl_ca}" >>$GITHUB_ENV

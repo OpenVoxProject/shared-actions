@@ -286,9 +286,7 @@ jobs:
           path: ${{ inputs.working_directory }}/output/
 
       - name: Configure OSUOSL CA Certificate for S3
-        if: >-
-          inputs.upload_to_s3 &&
-          ( secrets.S3_ENDPOINT_URL == 'https://s3.osuosl.org' )
+        if: ${{ inputs.upload_to_s3 }}
         uses: ./.github/actions/setup-osuosl-ca
 
       - name: Upload output to S3
