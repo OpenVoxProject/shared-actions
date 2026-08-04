@@ -9,7 +9,7 @@ description: >-
     https://github.com/aws/aws-cli/issues/10389
 
   This action downloads the latest Mozilla CA bundle, writes it out to a file
-  under $RUNNER_TMP, and then sets the path to that file in the AWS_CA_BUNDLE
+  under $RUNNER_TEMP, and then sets the path to that file in the AWS_CA_BUNDLE
   environment variable. The AWS CLI will read certificates from this variable,
   unless overriden by something like the "--ca-bundle" CLI flag.
 
@@ -21,7 +21,7 @@ runs:
       run: |
         # Replace any backslashes with forward slashes so that a Windows path
         # is usable from both POSIX and WIN32 contexts.
-        osuosl_ca="${RUNNER_TMP//\\//}/osuosl-ca.pem"
+        osuosl_ca="${RUNNER_TEMP//\\//}/osuosl-ca.pem"
 
         printf 'Downloading Mozilla CA bundle to: %s\n' "${osuosl_ca}"
 
