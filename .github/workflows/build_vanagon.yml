@@ -287,7 +287,7 @@ jobs:
 
       - name: Configure OSUOSL CA Certificate for S3
         if: ${{ inputs.upload_to_s3 }}
-        uses: ./.github/actions/setup-osuosl-ca
+        uses: $/.github/actions/setup-osuosl-ca
 
       - name: Upload output to S3
         if: ${{ inputs.upload_to_s3 }}
