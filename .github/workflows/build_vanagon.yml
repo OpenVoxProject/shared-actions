@@ -201,10 +201,6 @@ jobs:
         if: ${{ startsWith(matrix.platform, 'windows') }}
         shell: pwsh
         run: |
-          # Without this, patch.exe fails due to line ending differences
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
           $url="https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314.exe"
           $dest="C:\wix314.exe"
           Invoke-WebRequest -Uri $url -OutFile $dest
