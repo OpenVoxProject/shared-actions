@@ -180,14 +180,38 @@ jobs:
             libffi-devel
             libyaml-devel
 
-      - name: Configure MSYS2 (Windows only)
-        if: ${{ startsWith(matrix.platform, 'windows-msys2') }}
-        env:
-          # Disable MSYS2 PATH stripping so that winget CLI is visible.
-          MSYS2_PATH_TYPE: inherit
+      # Legacy Windows build path, can be removed once OpenVox 8.x reaches
+      # End of Life.
+      - name: Set up Cygwin (Windows, OpenVox 8.x only)
+        if: ${{ startsWith(matrix.platform, 'windows-all') }}
+        shell: pwsh
+        working-directory: ${{ inputs.working_directory }}
         run: |
-          # bundle install hangs under MSYS2 Ruby when more than one
-          # job is run in parallel.
+          $url="https://cygwin.com/setup-x86_64.exe"
+          $dest="C:\setup-x86_64.exe"
+          Invoke-WebRequest -Uri $url -OutFile $dest
+          cmd /c "C:\setup-x86_64.exe -s https://cygwin.osuosl.org -q -P ruby,ruby-devel,rubygems,gcc-core,make,git,libyaml-devel,libffi-devel"
+
+          # This is to make sure Cygwin binaries are used over preinstalled items
+          echo "C:\cygwin64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # This is to fix file permissions issues when we check out code outside of Cygwin
+          echo "none /cygdrive cygdrive binary,noacl,posix=0,user 0 0" | Out-File -FilePath C:\cygwin64\etc\fstab -Encoding ASCII
+
+      - name: Common Windows Setup
+        if: ${{ startsWith(matrix.platform, 'windows') }}
+        shell: pwsh
+        run: |
+          $url="https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314.exe"
+          $dest="C:\wix314.exe"
+          Invoke-WebRequest -Uri $url -OutFile $dest
+          cmd /c "C:\wix314.exe -quiet"
+
+      - name: Common Windows Setup (POSIX)
+        if: ${{ startsWith(matrix.platform, 'windows') }}
+        # uses the POSIX shell selected by set-matrix
+        run: |
+          # For some reason, likely cygwin-threading-related, bundle install
+          # hangs when more than one job is run in parallel.
           bundle config set --global jobs 1
 
           # This is so that Puppet doesn't throw up when we look up Puppet.version in the
@@ -196,44 +220,11 @@ jobs:
           # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
           echo "root:*:0:0:::" >>/etc/passwd
 
-          # WinGet exits with a failure code if asked to install an
-          # already-installed package.
-          winget list \
-            --accept-source-agreements \
-            --id WiXToolset.WiXToolset --source winget || \
-          winget install \
-            --accept-source-agreements --accept-package-agreements --silent \
-            --id WiXToolset.WiXToolset --source winget
-
-      - name: Set git params for Windows
-        if: ${{ startsWith(matrix.platform, 'windows') }}
-        shell: pwsh
-        run: |
-          # Without this, patch.exe fails due to line ending differences
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0 # So we fetch all history and tags and can build non-tagged versions
-
-      - name: Install Cygwin and bootstrap dependencies (Windows only)
-        if: ${{ startsWith(matrix.platform, 'windows-all') }}
-        shell: pwsh
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          .\setup.ps1
-          # This is to make sure Cygwin binaries are used over preinstalled items
-          echo "C:\cygwin64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          # This is to fix file permissions issues when we check out code outside of Cygwin
-          echo "none /cygdrive cygdrive binary,noacl,posix=0,user 0 0" | Out-File -FilePath C:\cygwin64\etc\fstab -Encoding ASCII
-          # This is so that Puppet doesn't throw up when we look up Puppet.version in the
-          # openvox repo. It will think it is in a posix environment, but it should not
-          # matter for any other part of the build process.
-          # See https://github.com/OpenVoxProject/openvox/blob/5bcee89748ad1069ac31504cbc4853a6d636c2b0/lib/puppet/feature/base.rb#L13-L19
-          echo "root:*:0:0:::" | Out-File -FilePath C:\cygwin64\etc\passwd -Encoding ASCII
 
       - name: Bundle install
         working-directory: ${{ inputs.working_directory }}
