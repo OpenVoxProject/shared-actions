@@ -20,8 +20,12 @@ on:
           Branch/tag from ezbake that will be used for openvoxdb/server builds.
         type: string
         required: false
-      ezbake-ver:
-        description: 'The version specified in project.clj in the given ezbake-ref. Will default to the version found in project.clj in the repo if not specified.'
+      ezbake-2-ver:
+        description: 'Version for the ezbake 2 build group used for older OSes.'
+        type: string
+        required: false
+      ezbake-4-ver:
+        description: 'Version for the ezbake 4 build group used for newer OSes.'
         type: string
         required: false
       branch:
@@ -38,17 +42,15 @@ env:
   # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
   AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
   AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
-  EZBAKE_BRANCH: ${{ inputs.ezbake-ref }}
 
 jobs:
-  build:
+  build-ezbake-2:
+    name: ezbake 2 build for legacy OSes
     runs-on: ubuntu-24.04
     timeout-minutes: 600
     strategy:
       fail-fast: false
     steps:
-      # This checks out the release branch, because the vox:build task will
-      # check out the tag itself.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,19 +60,30 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: OpenVoxProject/shared-actions
-          ref: main
+          ref: ezbake4 # switch to main before merge!
           path: .shared-actions
           sparse-checkout: platforms.json
           sparse-checkout-cone-mode: false
 
-      - name: Resolve platform lists
+      - name: Resolve platform lists for ezbake 2
         env:
           DEB_PLATFORMS: ${{ inputs.deb_platform_list }}
           RPM_PLATFORMS: ${{ inputs.rpm_platform_list }}
           BRANCH: ${{ inputs.branch }}
+          EZBAKE_2_VER: ${{ inputs.ezbake-2-ver }}
         run: |
-          echo "DEB_PLATFORMS=${DEB_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-deb" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
-          echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
+          EZBAKE_2_VER="${EZBAKE_2_VER:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake2-version"' .shared-actions/platforms.json)}"
+
+          echo "EZBAKE_BRANCH=${{ inputs.ezbake-ref }}" >> $GITHUB_ENV
+          echo "EZBAKE_VERSION=${EZBAKE_2_VER}" >> $GITHUB_ENV
+          DEB_PLATFORMS="${DEB_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake2-deb" | join(",")' .shared-actions/platforms.json)}"
+          echo "DEB_PLATFORMS=$DEB_PLATFORMS" >> $GITHUB_ENV
+          RPM_PLATFORMS="${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake2-rpm" | join(",")' .shared-actions/platforms.json)}"
+          echo "RPM_PLATFORMS=$RPM_PLATFORMS" >> $GITHUB_ENV
+
+          echo "::notice title=ezbake 2 EZBAKE_BRANCH::${{ inputs.ezbake-ref }}"
+          echo "::notice title=ezbake 2 EZBAKE_VERSION::$EZBAKE_2_VER"
+          echo "::notice title=ezbake 2 PLATFORMS::$DEB_PLATFORMS,$RPM_PLATFORMS"
 
       - name: Install Ruby
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
@@ -82,7 +95,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/ezbake-builder.tar
-          key: docker-ezbake-${{ hashFiles('Dockerfile') }}
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-legacy
 
       - name: Load or build Docker image
         run: |
@@ -97,17 +110,98 @@ jobs:
         if: always() && steps.docker-cache.outputs.cache-hit != 'true'
         with:
           path: /tmp/ezbake-builder.tar
-          key: docker-ezbake-${{ hashFiles('Dockerfile') }}
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-legacy
 
       - name: Update awscli
         run: |
           python -m pip install --upgrade awscli
 
-      - name: Set EZBAKE_VERSION if provided
-        if: ${{ inputs.ezbake-ver != '' }}
+      - name: Run build script
         env:
-          EZBAKE_VER: ${{ inputs.ezbake-ver }}
-        run: echo "EZBAKE_VERSION=${EZBAKE_VER}" >> $GITHUB_ENV
+          BUILD_REF: ${{ inputs.ref }}
+        run: |
+          rm -rf output
+          bundle exec rake "vox:build[${BUILD_REF}]"
+
+      - name: Configure OSUOSL CA Certificate for S3
+        uses: $/.github/actions/setup-osuosl-ca
+
+      - name: Upload output to S3
+        run: |
+          bundle exec rake vox:upload
+
+  build-ezbake-4:
+    name: ezbake 4 build for modern OSes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 600
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Checkout platform config
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: OpenVoxProject/shared-actions
+          ref: ezbake4 # switch to main before merge!
+          path: .shared-actions
+          sparse-checkout: platforms.json
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve platform lists for ezbake 4
+        env:
+          DEB_PLATFORMS: ${{ inputs.deb_platform_list }}
+          RPM_PLATFORMS: ${{ inputs.rpm_platform_list }}
+          BRANCH: ${{ inputs.branch }}
+          EZBAKE_4_VER: ${{ inputs.ezbake-4-ver }}
+        run: |
+          EZBAKE_4_VER="${EZBAKE_4_VER:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake4-version"' .shared-actions/platforms.json)}"
+
+          echo "EZBAKE_BRANCH=${{ inputs.ezbake-ref }}" >> $GITHUB_ENV
+          echo "EZBAKE_VERSION=${EZBAKE_4_VER}" >> $GITHUB_ENV
+          DEB_PLATFORMS="${DEB_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake4-deb" | join(",")' .shared-actions/platforms.json)}"
+          echo "DEB_PLATFORMS=$DEB_PLATFORMS" >> $GITHUB_ENV
+          RPM_PLATFORMS="${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake4-rpm" | join(",")' .shared-actions/platforms.json)}"
+          echo "RPM_PLATFORMS=$RPM_PLATFORMS" >> $GITHUB_ENV
+
+          echo "::notice title=ezbake 4 EZBAKE_BRANCH::${{ inputs.ezbake-ref }}"
+          echo "::notice title=ezbake 4 EZBAKE_VERSION::$EZBAKE_4_VER"
+          echo "::notice title=ezbake 4 PLATFORMS::$DEB_PLATFORMS,$RPM_PLATFORMS"
+
+      - name: Install Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      # we need to cache the container per-ezbake version because ezbake is checked out inside of that container
+      - id: docker-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/ezbake-builder.tar
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-modern
+
+      - name: Load or build Docker image
+        run: |
+          if [[ -f /tmp/ezbake-builder.tar ]]; then
+            docker load -i /tmp/ezbake-builder.tar
+          else
+            docker build -t ezbake-builder .
+            docker save ezbake-builder -o /tmp/ezbake-builder.tar
+          fi
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: always() && steps.docker-cache.outputs.cache-hit != 'true'
+        with:
+          path: /tmp/ezbake-builder.tar
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-modern
+
+      - name: Update awscli
+        run: |
+          python -m pip install --upgrade awscli
 
       - name: Run build script
         env:

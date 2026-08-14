@@ -78,18 +78,26 @@ map_platforms='
 intersect='. as $uni | $uni | map(select(. as $u | ($set | any(. == $u))))'
 
 # Which build list gates this suite: the agent (vanagon) list for the agent
-# suites, or the combined server/db (ezbake) list otherwise.
+# suites, or the combined server/db (ezbake) list otherwise. The platform file
+# uses both the legacy ezbake2 keys and the current ezbake4 keys depending on
+# the branch, so we must accept both shapes instead of assuming one stale name.
 case "$suite" in
   openvox|openvox-agent)
     build_list=$(jq -c --arg b "$branch" '.[$b].vanagon' "$platforms") ;;
   openvox-server|openvoxdb)
-    build_list=$(jq -c --arg b "$branch" '(.[$b]["ezbake-deb"] + .[$b]["ezbake-rpm"])' "$platforms") ;;
+    build_list=$(jq -c --arg b "$branch" '
+      (.[$b]["ezbake4-deb"] // [] + .[$b]["ezbake4-rpm"] // [] +
+       .[$b]["ezbake2-deb"] // [] + .[$b]["ezbake2-rpm"] // [])
+    ' "$platforms") ;;
   *)
     echo "Unknown suite '$suite'" >&2; exit 1 ;;
 esac
 # The server/db build list is always needed to decide when a fall back is needed
 # to test an agent platform that does not have a corresponding server build.
-server_list=$(jq -c --arg b "$branch" '(.[$b]["ezbake-deb"] + .[$b]["ezbake-rpm"])' "$platforms")
+server_list=$(jq -c --arg b "$branch" '
+  (.[$b]["ezbake4-deb"] // [] + .[$b]["ezbake4-rpm"] // [] +
+   .[$b]["ezbake2-deb"] // [] + .[$b]["ezbake2-rpm"] // [])
+' "$platforms")
 
 # Translate platforms.json OS names to nested_vms tuples.
 build_os=$(jq -c "$map_platforms" <<<"$build_list")

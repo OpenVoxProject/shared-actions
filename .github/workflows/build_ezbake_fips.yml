@@ -16,10 +16,16 @@ on:
         description: 'Branch/tag from ezbake that will be used for openvoxdb/server builds.'
         type: string
         required: false
-      ezbake-ver:
-        description: 'The version specified in project.clj in the given ezbake-ref. Will default to the version found in project.clj in the repo if not specified.'
+      ezbake-2-ver:
+        description: 'Version for the ezbake 2 build group used for older OSes.'
         type: string
         required: false
+        default: '2.9.1'
+      ezbake-4-ver:
+        description: 'Version for the ezbake 4 build group used for newer OSes.'
+        type: string
+        required: false
+        default: '4.0.0'
       branch:
         description: 'Release branch being built. Used for repo checkout and default platform list.'
         type: string
@@ -55,7 +61,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: OpenVoxProject/shared-actions
-          ref: main
+          ref: ezbake4
           path: .shared-actions
           sparse-checkout: platforms.json
           sparse-checkout-cone-mode: false
@@ -65,6 +71,10 @@ jobs:
           RPM_PLATFORMS: ${{ inputs.rpm_platform_list }}
           BRANCH: ${{ inputs.branch }}
         run: |
+          EZBAKE_2_VER="${{ inputs.ezbake-2-ver }}"
+          EZBAKE_4_VER="${{ inputs.ezbake-4-ver }}"
+          echo "EZBAKE_BRANCH=${{ inputs.ezbake-ref }}" >> $GITHUB_ENV
+          echo "EZBAKE_VERSION=${EZBAKE_2_VER}" >> $GITHUB_ENV
           echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-fips-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
 
       - name: Install Ruby
@@ -97,12 +107,6 @@ jobs:
       - name: Update awscli
         run: |
           python -m pip install --upgrade awscli
-
-      - name: Set EZBAKE_VERSION if provided
-        if: ${{ inputs.ezbake-ver != '' }}
-        env:
-          EZBAKE_VER: ${{ inputs.ezbake-ver }}
-        run: echo "EZBAKE_VERSION=${EZBAKE_VER}" >> $GITHUB_ENV
 
       - name: Run build script
         env:
