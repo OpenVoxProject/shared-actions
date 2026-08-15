@@ -16,16 +16,10 @@ on:
         description: 'Branch/tag from ezbake that will be used for openvoxdb/server builds.'
         type: string
         required: false
-      ezbake-2-ver:
+      ezbake-ver:
         description: 'Version for the ezbake 2 build group used for older OSes.'
         type: string
         required: false
-        default: '2.9.1'
-      ezbake-4-ver:
-        description: 'Version for the ezbake 4 build group used for newer OSes.'
-        type: string
-        required: false
-        default: '4.0.0'
       branch:
         description: 'Release branch being built. Used for repo checkout and default platform list.'
         type: string
@@ -45,7 +39,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -61,7 +55,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: OpenVoxProject/shared-actions
-          ref: ezbake4
+          ref: ezbake4 # rename to main before merge
           path: .shared-actions
           sparse-checkout: platforms.json
           sparse-checkout-cone-mode: false
@@ -71,11 +65,16 @@ jobs:
           RPM_PLATFORMS: ${{ inputs.rpm_platform_list }}
           BRANCH: ${{ inputs.branch }}
         run: |
-          EZBAKE_2_VER="${{ inputs.ezbake-2-ver }}"
-          EZBAKE_4_VER="${{ inputs.ezbake-4-ver }}"
+          EZBAKE_VERSION="${EZBAKE_VER:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake2-version"' .shared-actions/platforms.json)}"
+
           echo "EZBAKE_BRANCH=${{ inputs.ezbake-ref }}" >> $GITHUB_ENV
-          echo "EZBAKE_VERSION=${EZBAKE_2_VER}" >> $GITHUB_ENV
-          echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-fips-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
+          echo "EZBAKE_VERSION=${EZBAKE_VERSION}" >> $GITHUB_ENV
+          RPM_PLATFORMS="${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-fips-rpm" | join(",")' .shared-actions/platforms.json)}"
+          echo "RPM_PLATFORMS=$RPM_PLATFORMS" >> $GITHUB_ENV
+
+          echo "::notice title=ezbake 2 EZBAKE_BRANCH::${{ inputs.ezbake-ref }}"
+          echo "::notice title=ezbake 2 EZBAKE_VERSION::$EZBAKE_VERSION"
+          echo "::notice title=ezbake 2 PLATFORMS::$RPM_PLATFORMS"
 
       - name: Install Ruby
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
@@ -87,7 +86,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/ezbake-builder.tar
-          key: docker-ezbake-${{ hashFiles('Dockerfile') }}
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-legacy # same key as in non-fips ezbake 2
 
       - name: Load or build Docker image
         run: |
@@ -102,7 +101,7 @@ jobs:
         if: always() && steps.docker-cache.outputs.cache-hit != 'true'
         with:
           path: /tmp/ezbake-builder.tar
-          key: docker-ezbake-${{ hashFiles('Dockerfile') }}
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-legacy
 
       - name: Update awscli
         run: |

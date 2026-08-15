@@ -45,8 +45,8 @@ env:
 
 jobs:
   build-ezbake-2:
-    name: ezbake 2 build for legacy OSes
-    runs-on: ubuntu-24.04
+    name: ezbake 2.x build for legacy OSes
+    runs-on: ubuntu-26.04
     timeout-minutes: 600
     strategy:
       fail-fast: false
@@ -95,7 +95,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/ezbake-builder.tar
-          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-legacy
+          key: docker-ezbake-${{ hashFiles('Dockerfile') }}-legacy # same key as in the fips workflow
 
       - name: Load or build Docker image
         run: |
@@ -131,8 +131,9 @@ jobs:
           bundle exec rake vox:upload
 
   build-ezbake-4:
-    name: ezbake 4 build for modern OSes
-    runs-on: ubuntu-24.04
+    name: ezbake 4.x build for modern OSes
+    runs-on: ubuntu-26.04
+    if: inputs.branch == 'main'
     timeout-minutes: 600
     strategy:
       fail-fast: false
