@@ -17,14 +17,26 @@ runs:
   using: composite
   steps:
     - name: Set Up OSUOSL CA Certificate
+      if: runner.os != 'Windows'
       shell: bash
       run: |
-        # Replace any backslashes with forward slashes so that a Windows path
-        # is usable from both POSIX and WIN32 contexts.
-        osuosl_ca="${RUNNER_TEMP//\\//}/osuosl-ca.pem"
+        osuosl_ca="${RUNNER_TEMP}/osuosl-ca.pem"
 
         printf 'Downloading Mozilla CA bundle to: %s\n' "${osuosl_ca}"
 
         curl -sSL https://curl.se/ca/cacert.pem -o "${osuosl_ca}"
 
         printf 'AWS_CA_BUNDLE=%s' "${osuosl_ca}" >>$GITHUB_ENV
+
+    - name: Set Up OSUOSL CA Certificate (Windows)
+      # pwsh avoids CRLF issues that arise when running bash scripts via Cygwin
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $osuosl_ca = "$env:RUNNER_TEMP/osuosl-ca.pem"
+
+        Write-Host "Downloading Mozilla CA bundle to: $osuosl_ca"
+
+        Invoke-WebRequest -Uri 'https://curl.se/ca/cacert.pem' -OutFile $osuosl_ca
+
+        "AWS_CA_BUNDLE=$osuosl_ca" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
