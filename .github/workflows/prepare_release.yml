@@ -44,7 +44,7 @@ jobs:
           # Agent/Server look like 8.23.0-1 or just 8.23.0
           # puppet-runtime looks like 2025.09.08.1
           if ! echo "${{ inputs.version }}" | grep -qE '^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+(-[[:alnum:].]+)?$|^[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}\.[[:digit:]]+$'; then
-            echo "::error::Version '${{ inputs.version }}' does not match expected format (semver like 8.23.0 or calver like 2025.09.08.1)"
+            echo "::error::Version '${{ inputs.version }}' does not match expected format (semver like 8.23.0 or 8.23.0-betaX or calver like 2025.09.08.1)"
             exit 1
           fi
 
