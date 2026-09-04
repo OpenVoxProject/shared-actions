@@ -121,6 +121,7 @@ jobs:
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
       acceptance-pre-suite: ${{ steps.set-defaults.outputs.acceptance_pre_suite }}
       acceptance-tests: ${{ steps.set-defaults.outputs.acceptance_tests }}
+      acceptance-post-suite: ${{ steps.set-defaults.outputs.acceptance_post_suite }}
       beaker-options: ${{ steps.set-defaults.outputs.beaker_options }}
     steps:
       - name: Checkout platform config
@@ -353,6 +354,8 @@ jobs:
             ${{ needs.set-project-defaults.outputs.acceptance-pre-suite || '[]' }}
           TESTS_ARRAY: |-
             ${{ needs.set-project-defaults.outputs.acceptance-tests || '[]' }}
+          POST_SUITE_ARRAY: |-
+            ${{ needs.set-project-defaults.outputs.acceptance-post-suite || '[]' }}
           TAGS: ${{ matrix.tags && toJson(matrix.tags) || '[]' }}
           BEAKER_OPTIONS: |-
             ${{ needs.set-project-defaults.outputs.beaker-options || '{}' }}
@@ -375,6 +378,7 @@ jobs:
               "type":                      "aio",
               "pre_suite": ${PRE_SUITE_ARRAY},
               "tests": ${TESTS_ARRAY},
+              "post_suite": ${POST_SUITE_ARRAY},
               "test_tag_and": ${TAGS}
             },
             ${BEAKER_OPTIONS}

@@ -1,5 +1,7 @@
 {
   "main": {
+    "ezbake2-version": "2.9.1",
+    "ezbake4-version": "4.0.0",
     "vanagon": [
       "amazon-2023-aarch64",
       "amazon-2023-x86_64",
@@ -35,20 +37,24 @@
       "ubuntu-26.04-armhf",
       "windows-msys2-x64"
     ],
-    "ezbake-deb": [
-      "ubuntu-22.04",
+    "ezbake2-deb": [
+      "ubuntu-22.04"
+    ],
+    "ezbake2-rpm": [
+      "amazon-2023",
+      "el-8",
+      "sles-15"
+    ],
+    "ezbake4-deb": [
       "ubuntu-24.04",
       "ubuntu-26.04",
       "debian-13"
     ],
-    "ezbake-rpm": [
-      "amazon-2023",
-      "el-8",
+    "ezbake4-rpm": [
       "el-9",
       "el-10",
       "fedora-43",
       "fedora-44",
-      "sles-15",
       "sles-16"
     ],
     "ezbake-fips-rpm": [
@@ -57,6 +63,8 @@
     ]
   },
   "8.x": {
+    "ezbake2-version": "2.9.1",
+    "ezbake4-version": "4.0.0",
     "vanagon": [
       "amazon-2-aarch64",
       "amazon-2-x86_64",
@@ -102,16 +110,16 @@
       "ubuntu-26.04-armhf",
       "windows-all-x64"
     ],
-    "ezbake-deb": [
+    "ezbake2-deb": [
       "ubuntu-22.04",
       "ubuntu-24.04",
       "ubuntu-25.04",
-      "ubuntu-26.04",
       "debian-11",
       "debian-12",
+      "ubuntu-26.04",
       "debian-13"
     ],
-    "ezbake-rpm": [
+    "ezbake2-rpm": [
       "amazon-2",
       "amazon-2023",
       "el-8",

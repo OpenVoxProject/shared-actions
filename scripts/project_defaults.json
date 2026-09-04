@@ -11,6 +11,9 @@
     "acceptance-tests": [
       "tests"
     ],
+    "acceptance-post-suite": [
+      "teardown/common/099_Archive_Logs.rb"
+    ],
     "acceptance-shard-tags": [
       "shard:group1",
       "shard:group2",
