@@ -12,11 +12,6 @@ on:
         required: false
         default: ''
         type: string
-      prerelease:
-        description: 'Mark this release as a prerelease'
-        required: false
-        default: false
-        type: boolean
       include_changelog_in_release:
         description: 'Include content from CHANGELOG.md in the release notes'
         required: false
@@ -147,16 +142,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.github_pat }}
         run: |
+          if [[ "${{ inputs.version }}" =~ (alpha|beta|rc) ]]; then
+            RELEASE_CHANNEL_ARGS=(--prerelease --latest=false)
+          else
+            RELEASE_CHANNEL_ARGS=(--latest)
+          fi
+
           RELEASE_ARGS=(
             "${{ inputs.version }}"
             --title "${{ inputs.version }}"
             --generate-notes
             --verify-tag
+            "${RELEASE_CHANNEL_ARGS[@]}"
           )
-
-          if [ "${{ inputs.prerelease }}" = "true" ]; then
-            RELEASE_ARGS+=(--prerelease)
-          fi
 
           if [ "${{ steps.extract_notes.outputs.has_notes }}" = "true" ]; then
             RELEASE_ARGS+=(--notes-file release_notes.md)

@@ -124,8 +124,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.github_pat }}
         run: |
+          if [[ "${{ steps.version.outputs.version }}" =~ (alpha|beta|rc) ]]; then
+            release_flags=(--prerelease --latest=false)
+          else
+            release_flags=(--latest)
+          fi
+
           gh release create \
             --repo ${{ github.repository }} \
             ${{ steps.version.outputs.version }} \
+            "${release_flags[@]}" \
             --generate-notes \
             --verify-tag
