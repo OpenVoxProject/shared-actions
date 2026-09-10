@@ -25,10 +25,6 @@ on:
         required: true
 
 env:
-  GIT_AUTHOR_NAME: OpenVoxProjectBot
-  GIT_AUTHOR_EMAIL: 215568489+OpenVoxProjectBot@users.noreply.github.com
-  GIT_COMMITTER_NAME: OpenVoxProjectBot
-  GIT_COMMITTER_EMAIL: 215568489+OpenVoxProjectBot@users.noreply.github.com
   BUNDLE_WITH: release
 
 jobs:
@@ -61,6 +57,7 @@ jobs:
           bundler-cache: true
 
       - name: Setup git and SSH signing
+        id: git_identity
         uses: ./.github/actions/setup-git-ssh-signing
         with:
           ssh_private_key: ${{ secrets.ssh_private_key }}
@@ -90,8 +87,8 @@ jobs:
           labels: skip-changelog
           token: '${{ secrets.github_pat }}'
           assignees: '${{ github.triggering_actor }}'
-          author: '${{ env.GIT_AUTHOR_NAME }} <${{ env.GIT_AUTHOR_EMAIL }}>'
-          committer: '${{ env.GIT_COMMITTER_NAME }} <${{ env.GIT_COMMITTER_EMAIL }}>'
+          author: '${{ steps.git_identity.outputs.git_author_name }} <${{ steps.git_identity.outputs.git_author_email }}>'
+          committer: '${{ steps.git_identity.outputs.git_committer_name }} <${{ steps.git_identity.outputs.git_committer_email }}>'
           signoff: true
           body: |
             Automated release-prep through https://github.com/OpenVoxProject/shared-actions/ from commit ${{ github.sha }}.

@@ -17,12 +17,6 @@ on:
 
 permissions: {}
 
-env:
-  GIT_AUTHOR_NAME: OpenVoxProjectBot
-  GIT_AUTHOR_EMAIL: 215568489+OpenVoxProjectBot@users.noreply.github.com
-  GIT_COMMITTER_NAME: OpenVoxProjectBot
-  GIT_COMMITTER_EMAIL: 215568489+OpenVoxProjectBot@users.noreply.github.com
-
 jobs:
   backport:
     name: Backport merged pull request
@@ -33,6 +27,7 @@ jobs:
     if: github.event.pull_request.merged && startsWith(github.event.label.name, 'backport ')
     steps:
       - name: Setup git and SSH signing
+        id: git_identity
         uses: ./.github/actions/setup-git-ssh-signing
         with:
           ssh_private_key: ${{ secrets.ssh_private_key }}
@@ -47,5 +42,5 @@ jobs:
           auto_merge_enabled: true
           auto_merge_method: merge
           github_token: ${{ secrets.github_pat }}
-          git_committer_name: OpenVoxProjectBot
-          git_committer_email: 215568489+OpenVoxProjectBot@users.noreply.github.com
+          git_committer_name: ${{ steps.git_identity.outputs.git_committer_name }}
+          git_committer_email: ${{ steps.git_identity.outputs.git_committer_email }}

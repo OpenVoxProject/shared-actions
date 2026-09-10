@@ -40,10 +40,6 @@ on:
         required: true
 
 env:
-  GIT_AUTHOR_NAME: OpenVoxProjectBot
-  GIT_AUTHOR_EMAIL: 215568489+OpenVoxProjectBot@users.noreply.github.com
-  GIT_COMMITTER_NAME: OpenVoxProjectBot
-  GIT_COMMITTER_EMAIL: 215568489+OpenVoxProjectBot@users.noreply.github.com
   BUNDLE_WITH: release
 
 jobs:
@@ -77,6 +73,7 @@ jobs:
           bundler-cache: true
 
       - name: Setup git and SSH signing
+        id: git_identity
         uses: ./.github/actions/setup-git-ssh-signing
         with:
           ssh_private_key: ${{ secrets.ssh_private_key }}
@@ -176,7 +173,7 @@ jobs:
         if: inputs.bump_to_rc_after_release
         uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
-          commit_user_name: ${{ env.GIT_COMMITTER_NAME }}
-          commit_user_email: ${{ env.GIT_COMMITTER_EMAIL }}
-          commit_author: '${{ env.GIT_AUTHOR_NAME }} <${{ env.GIT_AUTHOR_EMAIL }}>'
+          commit_user_name: ${{ steps.git_identity.outputs.git_committer_name }}
+          commit_user_email: ${{ steps.git_identity.outputs.git_committer_email }}
+          commit_author: '${{ steps.git_identity.outputs.git_author_name }} <${{ steps.git_identity.outputs.git_author_email }}>'
           commit_message: "Bump version to ${{ steps.future_version.outputs.version }}"
