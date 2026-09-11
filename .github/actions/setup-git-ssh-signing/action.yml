@@ -60,9 +60,10 @@ runs:
         mkdir -p ~/.ssh
         echo "${{ inputs.ssh_private_key }}" > ~/.ssh/github_actions
         chmod 600 ~/.ssh/github_actions
-        ssh-agent -a /tmp/ssh_agent.sock > /dev/null
+        export SSH_AUTH_SOCK=/tmp/ssh_agent.sock
+        ssh-agent -a "$SSH_AUTH_SOCK" > /dev/null
         ssh-add ~/.ssh/github_actions
-        echo "SSH_AUTH_SOCK=/tmp/ssh_agent.sock" >> "$GITHUB_ENV"
+        echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
 
     - name: Setup git
       shell: bash
