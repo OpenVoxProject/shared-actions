@@ -58,7 +58,7 @@ jobs:
 
       - name: Setup git and SSH signing
         id: git_identity
-        uses: ./.github/actions/setup-git-ssh-signing
+        uses: $/.github/actions/setup-git-ssh-signing
         with:
           ssh_private_key: ${{ secrets.ssh_private_key }}
 
