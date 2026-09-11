@@ -62,6 +62,7 @@ runs:
         chmod 600 ~/.ssh/github_actions
         ssh-agent -a /tmp/ssh_agent.sock > /dev/null
         ssh-add ~/.ssh/github_actions
+        echo "SSH_AUTH_SOCK=/tmp/ssh_agent.sock" >> "$GITHUB_ENV"
 
     - name: Setup git
       shell: bash
