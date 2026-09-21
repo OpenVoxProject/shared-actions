@@ -15,6 +15,11 @@ on:
         description: 'A comma-separated list of platforms to build for. Do not include spaces. If not provided, will use the default list of platforms supported by OpenVox.'
         required: false
         type: string
+      platforms_key:
+        description: 'The key in platforms.json holding the default platform list for this project. Only used when platform_list is not provided.'
+        required: false
+        type: string
+        default: 'vanagon'
       vanagon_branch:
         description: 'The branch of the vanagon repository to use'
         required: false
@@ -57,10 +62,11 @@ jobs:
       - id: set-matrix
         env:
           PLATFORM_LIST: ${{ inputs.platform_list }}
+          PLATFORMS_KEY: ${{ inputs.platforms_key }}
           PROJECT_NAME: ${{ inputs.project_name }}
           BRANCH: ${{ inputs.branch }}
         run: |
-          mapfile -t default_list < <(jq -r --arg branch "${BRANCH}" '.[$branch].vanagon[]' .shared-actions/platforms.json)
+          mapfile -t default_list < <(jq -r --arg branch "${BRANCH}" --arg key "${PLATFORMS_KEY}" '.[$branch][$key][]' .shared-actions/platforms.json)
           if [[ -n "${PLATFORM_LIST}" ]]; then
             IFS=',' read -r -a platforms <<< "${PLATFORM_LIST}"
           else
