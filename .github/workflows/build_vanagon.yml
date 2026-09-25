@@ -129,6 +129,7 @@ jobs:
           ruby-version: '3.2'
 
       - name: Display Ruby environment
+        if: ${{ ! startsWith(matrix.platform, 'windows') }}
         run: bundle env
 
       - name: Set up MSYS2 (Windows only)
