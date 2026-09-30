@@ -88,6 +88,29 @@ openvox-server repositories in the `.github/workflows` directory.
 See [beaker_acceptance.yml](.github/workflows/beaker_acceptance.yml)
 for parameter details.
 
+#### FIPS Support
+
+Setting `fips` to `true` tests the redhatfips packages instead of the
+regular ones. The job matrix is then derived from the FIPS build
+platforms of the collection (the `redhatfips-N` entries in
+`platforms.json`), each run on AlmaLinux of that major version.
+Before anything is installed, the workflow switches every VM to
+FIPS mode with `fips-mode-setup --enable` and reboots it, so the
+suites run against a kernel and crypto policy in FIPS mode. The VMs
+are reached with an RSA key, because sshd in FIPS mode refuses the
+ed25519 key that nested_vms would generate.
+
+The packages are still installed by the openvox_bootstrap tasks, which
+pick the redhatfips packages on a host in FIPS mode from the release
+that added that behavior on. The workflow fails after the install step
+if any installed OpenVox package is not a redhatfips build.
+
+The version inputs must name builds that have redhatfips packages. The
+tagged releases and the collections do. Pre-release openvox-server and
+openvoxdb FIPS packages are built by the build_fips workflows of those
+repositories and land under their own version, so a FIPS run of
+pre-release builds is a separate dispatch with those versions.
+
 #### Arm64 Support
 
 You can run the `beaker_acceptance` workflow on arm64 guests in gha by
