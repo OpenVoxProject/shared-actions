@@ -386,9 +386,10 @@ jobs:
           # The install plan takes its packages from the openvox_bootstrap
           # release on the Forge. A release without FIPS support installs
           # the el packages on a FIPS VM, which must not pass as a FIPS run.
-          # The agent is on every VM, so its absence fails the check too.
+          # Every VM lists its OpenVox packages, and each of them must be
+          # a redhatfips build. An empty list fails too.
           bundle exec bolt command run \
-            'rpm -q openvox-agent && ! rpm -qa "openvox*" | grep -v redhatfips' \
+            'rpm -qa "openvox*" | grep . && ! rpm -qa "openvox*" | grep -v redhatfips' \
             --targets all --inventory "${INVENTORY}"
 
       - name: Construct hosts.yaml
