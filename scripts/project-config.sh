@@ -23,6 +23,8 @@
 #
 # Environment:
 #   PLATFORMS_JSON  override the path to platforms.json (default ../platforms.json)
+#   FIPS            "true" derives the matrix from the FIPS build lists instead,
+#                   with each redhatfips-N build mapped to AlmaLinux N
 #
 # Example:
 #   scripts/project-config.sh openvox-server openvox9 | jq .
@@ -31,6 +33,7 @@ set -euo pipefail
 suite=${1:?usage: project-config.sh <suite> <collection> [<qemu>]}
 collection=${2:?usage: project-config.sh <suite> <collection> [<qemu>]}
 qemu=${3:-false}
+fips=${FIPS:-false}
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 platforms="${PLATFORMS_JSON:-${script_dir}/../platforms.json}"
@@ -59,13 +62,16 @@ esac
 # jq: turn a list of build-platform strings (e.g. "el-9", "debian-13",
 # "ubuntu-24.04-amd64") into acceptance [os, version] pairs. Arch suffixes are
 # stripped, "el-N" expands to both almalinux and rocky (which the acceptance
-# suite tests separately), and non-VM families are dropped.
+# suite tests separately), "redhatfips-N" becomes almalinux (the OS the FIPS
+# agent is built on), and non-VM families are dropped.
 map_platforms='
   def strip_arch: sub("-(x86_64|amd64|aarch64|arm64|armhf)$"; "");
   def map_platform:
     strip_arch as $s
     | if   ($s | test("^el-[0-9]+$"))
         then ($s | ltrimstr("el-")) as $v | [["almalinux", $v], ["rocky", $v]]
+      elif ($s | test("^redhatfips-[0-9]+$"))
+        then [["almalinux", ($s | ltrimstr("redhatfips-"))]]
       elif ($s | test("^debian-[0-9]+$"))
         then [["debian", ($s | ltrimstr("debian-"))]]
       elif ($s | test("^ubuntu-[0-9.]+$"))
@@ -78,18 +84,27 @@ map_platforms='
 intersect='. as $uni | $uni | map(select(. as $u | ($set | any(. == $u))))'
 
 # Which build list gates this suite: the agent (vanagon) list for the agent
-# suites, or the combined server/db (ezbake) list otherwise.
+# suites, or the combined server/db (ezbake) list otherwise. The vanagon list
+# holds both the regular and the FIPS agent builds, so it is split by mode; the
+# server/db builds have a list per mode.
+if [[ "$fips" == "true" ]]; then
+  agent_list_query='.[$b].vanagon | map(select(startswith("redhatfips-")))'
+  server_list_query='.[$b]["ezbake-fips-rpm"]'
+else
+  agent_list_query='.[$b].vanagon | map(select(startswith("redhatfips-") | not))'
+  server_list_query='(.[$b]["ezbake-deb"] + .[$b]["ezbake-rpm"])'
+fi
 case "$suite" in
   openvox|openvox-agent)
-    build_list=$(jq -c --arg b "$branch" '.[$b].vanagon' "$platforms") ;;
+    build_list=$(jq -c --arg b "$branch" "$agent_list_query" "$platforms") ;;
   openvox-server|openvoxdb)
-    build_list=$(jq -c --arg b "$branch" '(.[$b]["ezbake-deb"] + .[$b]["ezbake-rpm"])' "$platforms") ;;
+    build_list=$(jq -c --arg b "$branch" "$server_list_query" "$platforms") ;;
   *)
     echo "Unknown suite '$suite'" >&2; exit 1 ;;
 esac
 # The server/db build list is always needed to decide when a fall back is needed
 # to test an agent platform that does not have a corresponding server build.
-server_list=$(jq -c --arg b "$branch" '(.[$b]["ezbake-deb"] + .[$b]["ezbake-rpm"])' "$platforms")
+server_list=$(jq -c --arg b "$branch" "$server_list_query" "$platforms")
 
 # Translate platforms.json OS names to nested_vms tuples.
 build_os=$(jq -c "$map_platforms" <<<"$build_list")
