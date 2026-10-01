@@ -103,7 +103,8 @@ ed25519 key that nested_vms would generate.
 The packages are still installed by the openvox_bootstrap tasks, which
 pick the redhatfips packages on a host in FIPS mode from the release
 that added that behavior on. The workflow fails after the install step
-if any installed OpenVox package is not a redhatfips build.
+if any VM has no OpenVox package or one that is not a redhatfips
+build.
 
 The version inputs must name builds that have redhatfips packages. The
 tagged releases and the collections do. Pre-release openvox-server and
