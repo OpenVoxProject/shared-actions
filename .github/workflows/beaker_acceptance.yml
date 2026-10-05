@@ -284,18 +284,20 @@ jobs:
           INVENTORY: terraform/instances/inventory.test.yaml
         run: |-
           # fips-mode-setup sets the FIPS crypto policy, regenerates the
-          # initramfs and adds fips=1 to the kernel command line. It needs
-          # a reboot, which systemd-run schedules after the command has
-          # returned to Bolt.
+          # initramfs and adds fips=1 to the kernel command line. EL 10 has
+          # no fips-mode-setup, so the policy and the kernel arguments are
+          # set directly there, with boot= because the cloud images keep
+          # /boot on its own partition. It needs a reboot, which
+          # systemd-run schedules after the command has returned to Bolt.
           bundle exec bolt command run \
-            'dnf install -y crypto-policies-scripts grubby && FIPS_MODE_SETUP_SKIP_WARNING=1 fips-mode-setup --enable && systemd-run --on-active=5 systemctl reboot' \
+            'dnf install -y crypto-policies-scripts grubby && if command -v fips-mode-setup; then FIPS_MODE_SETUP_SKIP_WARNING=1 fips-mode-setup --enable; else grubby --update-kernel=ALL --args="fips=1 boot=UUID=$(findmnt --noheadings --output UUID /boot)" && update-crypto-policies --set FIPS; fi && systemd-run --on-active=5 systemctl reboot' \
             --targets all --inventory "${INVENTORY}"
           # A VM that has not rebooted yet does not report FIPS mode
-          # either, so this waits for the reboot as well. The --check
-          # run prints the details for the log.
+          # either, so this waits for the reboot as well. The greps print
+          # the kernel flag and the policy for the log.
           for attempt in $(seq 1 30); do
             sleep 10
-            if bundle exec bolt command run 'fips-mode-setup --is-enabled && fips-mode-setup --check' \
+            if bundle exec bolt command run 'grep -x 1 /proc/sys/crypto/fips_enabled && update-crypto-policies --show | grep -x FIPS' \
                  --targets all --inventory "${INVENTORY}"; then
               exit 0
             fi

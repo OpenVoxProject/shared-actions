@@ -95,10 +95,12 @@ regular ones. The job matrix is then derived from the FIPS build
 platforms of the collection (the `redhatfips-N` entries in
 `platforms.json`), each run on AlmaLinux of that major version.
 Before anything is installed, the workflow switches every VM to
-FIPS mode with `fips-mode-setup --enable` and reboots it, so the
-suites run against a kernel and crypto policy in FIPS mode. The VMs
-are reached with an RSA key, because sshd in FIPS mode refuses the
-ed25519 key that nested_vms would generate.
+FIPS mode and reboots it, so the suites run against a kernel and
+crypto policy in FIPS mode. On EL 8 and 9 it runs
+`fips-mode-setup --enable`. EL 10 no longer has that tool, so there
+it sets the FIPS policy and adds `fips=1` to the kernel command line.
+The VMs are reached with an RSA key, because sshd in FIPS mode
+refuses the ed25519 key that nested_vms would generate.
 
 The packages are still installed by the openvox_bootstrap tasks, which
 pick the redhatfips packages on a host in FIPS mode from the release
