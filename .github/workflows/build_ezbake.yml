@@ -46,6 +46,8 @@ jobs:
     timeout-minutes: 600
     strategy:
       fail-fast: false
+    outputs:
+      tag_exists: ${{ steps.check-ref.outputs.tag_exists }}
     steps:
       # This checks out the release branch, because the vox:build task will
       # check out the tag itself.
@@ -123,8 +125,17 @@ jobs:
         run: |
           bundle exec rake vox:upload
 
+      - name: Check whether the ref is a tag
+        id: check-ref
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          found="$(git ls-remote --tags "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" "refs/tags/${REF}")"
+          echo "tag_exists=$([[ -n "${found}" ]] && echo true || echo false)" | tee -a "${GITHUB_OUTPUT}"
+
   update_sbom_data:
     needs: build
+    if: ${{ needs.build.outputs.tag_exists == 'true' }}
     runs-on: ubuntu-26.04
     steps:
       - name: Update openvox-sbom-tools data

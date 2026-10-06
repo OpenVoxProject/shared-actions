@@ -44,6 +44,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       build_matrix: ${{ steps.set-matrix.outputs.build_matrix }}
+      tag_exists: ${{ steps.check-ref.outputs.tag_exists }}
     steps:
       - name: Checkout platform config
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -108,6 +109,14 @@ jobs:
           done
           matrix_json="[$(IFS=','; echo "${build_platforms[*]}")]"
           echo "build_matrix=$matrix_json" >> "${GITHUB_OUTPUT}"
+
+      - name: Check whether the ref is a tag
+        id: check-ref
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          found="$(git ls-remote --tags "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" "refs/tags/${REF}")"
+          echo "tag_exists=$([[ -n "${found}" ]] && echo true || echo false)" | tee -a "${GITHUB_OUTPUT}"
 
   build:
     needs: set-matrix
@@ -268,8 +277,12 @@ jobs:
         run: bundle exec rake "vox:upload[${BUILD_DESCRIBE},${BUILD_PLATFORM}]"
 
   update_sbom_data:
-    needs: build
-    if: ${{ inputs.upload_to_s3 }}
+    needs: [set-matrix, build]
+    # openvox-sbom-tools only covers these vanagon projects
+    if: >-
+      ${{ inputs.upload_to_s3
+      && needs.set-matrix.outputs.tag_exists == 'true'
+      && contains(fromJSON('["openvox-agent", "openbolt"]'), inputs.project_name) }}
     runs-on: ubuntu-26.04
     steps:
       - name: Update openvox-sbom-tools data
