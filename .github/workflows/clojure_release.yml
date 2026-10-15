@@ -24,6 +24,10 @@ on:
         type: string
         required: false
         default: ''
+    outputs:
+      version:
+        description: 'The released version, which is also the name of the pushed tag.'
+        value: ${{ jobs.release.outputs.version }}
     secrets:
       github_pat:
         # Provide a fine-grained token with the following repository permissions:
@@ -49,6 +53,8 @@ jobs:
     # https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments
     environment: release
     if: github.repository_owner == 'OpenVoxProject'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     permissions:
       contents: write
       packages: write
