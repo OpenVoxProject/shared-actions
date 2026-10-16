@@ -31,7 +31,7 @@ on:
         type: boolean
         default: true
       branch:
-        description: 'Release branch being built. Selects the default platform list.'
+        description: 'Release branch being built. Selects the default platform list and the Ruby that runs vanagon.'
         type: string
         required: false
         default: 'main'
@@ -135,7 +135,7 @@ jobs:
         if: ${{ ! startsWith(matrix.platform, 'windows') }}
         uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1.325.0
         with:
-          ruby-version: '3.2'
+          ruby-version: ${{ inputs.branch == '8.x' && '3.2' || '4.0' }}
 
       - name: Display Ruby environment
         if: ${{ ! startsWith(matrix.platform, 'windows') }}
