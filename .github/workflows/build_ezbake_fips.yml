@@ -70,7 +70,7 @@ jobs:
           echo "RPM_PLATFORMS=${RPM_PLATFORMS:-$(jq -r --arg branch "${BRANCH}" '.[$branch]."ezbake-fips-rpm" | join(",")' .shared-actions/platforms.json)}" >> $GITHUB_ENV
 
       - name: Install Ruby
-        uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1.325.0
+        uses: ruby/setup-ruby@651ff0d62c5c79bed6d53ec518387aae20e72c1a # v1.329.0
         with:
           ruby-version: '4.0'
           bundler-cache: true
