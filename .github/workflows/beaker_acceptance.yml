@@ -408,7 +408,7 @@ jobs:
           cat "${HOSTS_YAML}"
 
       - name: Install Ruby and Run Bundler for Acceptance Tests
-        uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1.325.0
+        uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8 # v1.331.0
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}

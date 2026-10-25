@@ -133,7 +133,7 @@ jobs:
     steps:
       - name: Install Ruby (except Windows and macos-all-x86_64)
         if: ${{ ! startsWith(matrix.platform, 'windows') }}
-        uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1.325.0
+        uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8 # v1.331.0
         with:
           ruby-version: ${{ inputs.branch == '8.x' && '3.2' || '4.0' }}
 
