@@ -3,6 +3,8 @@
     "vanagon": [
       "amazon-2023-aarch64",
       "amazon-2023-x86_64",
+      "amazon-2027-aarch64",
+      "amazon-2027-x86_64",
       "debian-12-aarch64",
       "debian-12-amd64",
       "debian-13-aarch64",
@@ -17,6 +19,8 @@
       "fedora-43-x86_64",
       "fedora-43-aarch64",
       "fedora-44-x86_64",
+      "fedora-45-aarch64",
+      "fedora-45-x86_64",
       "fedora-44-aarch64",
       "macos-all-arm64",
       "macos-all-x86_64",
@@ -44,11 +48,13 @@
     ],
     "ezbake-rpm": [
       "amazon-2023",
+      "amazon-2027",
       "el-8",
       "el-9",
       "el-10",
       "fedora-43",
       "fedora-44",
+      "fedora-45",
       "sles-15",
       "sles-16"
     ],
