@@ -205,7 +205,7 @@ jobs:
   acceptance:
     name: Acceptance Tests
     needs: [set-project-defaults, set-matrix]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.ACCEPTANCE_RUNNER || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.set-matrix.outputs.job-matrix) }}
