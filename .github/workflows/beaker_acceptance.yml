@@ -117,6 +117,13 @@ on:
         required: false
         type: boolean
         default: false
+    secrets:
+      GCS_ACCESS_KEY_ID:
+        description: Access ID of an HMAC key that can read the bucket in the GCS_ARTIFACTS_BUCKET variable.
+        required: false
+      GCS_SECRET_ACCESS_KEY:
+        description: Secret of the GCS_ACCESS_KEY_ID HMAC key.
+        required: false
 
 env:
   # Suppress warnings about Bolt gem versus package use.
@@ -306,11 +313,32 @@ jobs:
           sudo sh -c 'tail -n 50 /var/log/libvirt/qemu/*-console.log'
           exit 1
 
+      - name: Copy packages from GCS when specified
+        if: vars.GCS_ARTIFACTS_BUCKET
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.GCS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GCS_SECRET_ACCESS_KEY }}
+          # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
+          AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
+          BUCKET: ${{ vars.GCS_ARTIFACTS_BUCKET }}
+          PACKAGES: >-
+            ${{ inputs.openvox-agent-pre-release-build && format('openvox-agent/{0}', inputs.openvox-agent-version) || '' }}
+            ${{ inputs.openvox-server-pre-release-build && fromJson(needs.set-project-defaults.outputs.install-openvox-server) && format('openvox-server/{0}', inputs.openvox-server-version) || '' }}
+            ${{ inputs.openvoxdb-pre-release-build && fromJson(needs.set-project-defaults.outputs.install-openvoxdb) && format('openvoxdb/{0}', inputs.openvoxdb-version) || '' }}
+        run: |-
+          for package in ${PACKAGES}; do
+            aws s3 cp --recursive --endpoint-url https://storage.googleapis.com \
+              "s3://${BUCKET}/${package}/" "/tmp/openvox-artifacts/${package}/"
+          done
+
       - name: Write Install OpenVox Params
         working-directory: kvm_automation_tooling
         env:
           OPENVOX_ARTIFACTS_URL: |-
             ${{ inputs.artifacts-url }}
+          OPENVOX_ARTIFACTS_DIR_KEY: |-
+            ${{ vars.GCS_ARTIFACTS_BUCKET && '"openvox_artifacts_dir": "/tmp/openvox-artifacts",' || '' }}
           OPENVOX_COLLECTION: ${{ inputs.openvox-collection }}
           OPENVOX_AGENT_VERSION: |-
             ${{ ((inputs.openvox-agent-version == '') && 'latest') ||
@@ -357,6 +385,7 @@ jobs:
               "openvox_released": ${OPENVOX_DB_RELEASED}
             },
             "install_defaults": {
+              ${OPENVOX_ARTIFACTS_DIR_KEY}
               "openvox_version": "latest",
               "openvox_collection": "${OPENVOX_COLLECTION}",
               "openvox_released": true,
