@@ -114,8 +114,9 @@ jobs:
         id: check-ref
         env:
           REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          found="$(git ls-remote --tags "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" "refs/tags/${REF}")"
+          found="$(git ls-remote --tags "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" "refs/tags/${REF}")"
           echo "tag_exists=$([[ -n "${found}" ]] && echo true || echo false)" | tee -a "${GITHUB_OUTPUT}"
 
   build:
