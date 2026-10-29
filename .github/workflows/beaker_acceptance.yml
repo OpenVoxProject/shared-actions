@@ -273,8 +273,9 @@ jobs:
         run: ssh-keygen -t rsa -f ~/.ssh/ssh-id-test -N '' -q
 
       - id: vm-cluster
-        uses: jpartlow/nested_vms@7f2caec8ae0a5c01eb8780cdb5891bd96acfab3e # 1.4.0
+        uses: jpartlow/nested_vms@d69256b2c09439a642a4709e18db2f179c3c47c1 # provide-kvm-ref-as-input
         with:
+          kat_ref: refs/pull/65/head
           os: ${{ steps.set-topology.outputs.os }}
           os-version: ${{ steps.set-topology.outputs.os_version }}
           os-arch: ${{ steps.set-topology.outputs.os_arch }}
