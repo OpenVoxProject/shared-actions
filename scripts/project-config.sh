@@ -41,8 +41,8 @@ project_defaults="${script_dir}/project_defaults.json"
 
 # The universe of OSes nested_vms can actually provision. The derived matrix is
 # always a subset of this, so build targets we cannot stand up as VMs (e.g. 8.x
-# el-7 -> alma/rocky 7 or ubuntu-25.04, and non-VM families like sles, fedora,
-# amazon, macos and windows) never leak into the matrix.
+# el-7 -> alma/rocky 7, and non-VM families like sles, fedora, amazon, macos
+# and windows) never leak into the matrix.
 universe='[
   ["almalinux","8"],["almalinux","9"],["almalinux","10"],
   ["debian","11"],["debian","12"],["debian","13"],
