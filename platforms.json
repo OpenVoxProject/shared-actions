@@ -94,9 +94,6 @@
       "ubuntu-24.04-aarch64",
       "ubuntu-24.04-amd64",
       "ubuntu-24.04-armhf",
-      "ubuntu-25.04-amd64",
-      "ubuntu-25.04-aarch64",
-      "ubuntu-25.04-armhf",
       "ubuntu-26.04-amd64",
       "ubuntu-26.04-aarch64",
       "ubuntu-26.04-armhf",
@@ -105,7 +102,6 @@
     "ezbake-deb": [
       "ubuntu-22.04",
       "ubuntu-24.04",
-      "ubuntu-25.04",
       "ubuntu-26.04",
       "debian-12",
       "debian-13"
