@@ -1,0 +1,113 @@
+---
+name: 'Promote Component'
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: 'Component name to promote'
+        required: true
+        type: string
+      ref:
+        description: 'Git ref/tag to promote. For puppet-runtime, use the tag that has been built and uploaded to openvox-artifacts.'
+        required: true
+        type: string
+      branch:
+        description: 'Branch to promote to'
+        required: false
+        default: 'main'
+        type: string
+      validate_command:
+        description: 'Optional command to validate the change before the PR is created (e.g. a vanagon render)'
+        required: false
+        default: ''
+        type: string
+      validate_working_directory:
+        description: 'Working directory for validate_command'
+        required: false
+        default: '.'
+        type: string
+    secrets:
+      github_pat:
+        # Fine-grained token with Contents and Pull requests: Read and write
+        description: 'The token used to check out the repo and create the pull request'
+        required: true
+      ssh_private_key:
+        description: 'The SSH private key used to sign commits.'
+        required: true
+
+permissions: {}
+
+jobs:
+  promote:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.branch }}
+          token: ${{ secrets.github_pat }}
+          fetch-depth: 0
+
+      - name: Setup git and SSH signing
+        id: git_identity
+        uses: OpenVoxProject/shared-actions/.github/actions/setup-git-ssh-signing@main
+        with:
+          ssh_private_key: ${{ secrets.ssh_private_key }}
+
+      - name: Validate component exists
+        env:
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          if [[ ! -f "packaging/configs/components/${COMPONENT}.json" ]]; then
+            echo "::error::Could not find packaging/configs/components/${COMPONENT}.json"
+            exit 1
+          fi
+
+      - name: Generate and write component JSON
+        env:
+          COMPONENT: ${{ inputs.component }}
+          REF: ${{ inputs.ref }}
+        run: |
+          if [[ "${COMPONENT}" =~ ^(puppet-runtime|openssl-fips)$ ]]; then
+            # Munge the ref: replace - with .
+            munged="${REF//-/.}"
+            json="{\"location\":\"https://s3.osuosl.org/openvox-artifacts/${COMPONENT}/${REF}/\",\"version\":\"${munged}\"}"
+          else
+            json="{\"url\":\"https://github.com/openvoxproject/${COMPONENT}.git\",\"ref\":\"${REF}\"}"
+          fi
+
+          echo "${json}" > "packaging/configs/components/${COMPONENT}.json"
+          echo "Wrote packaging/configs/components/${COMPONENT}.json:"
+          cat "packaging/configs/components/${COMPONENT}.json"
+
+      - name: Install Ruby
+        if: inputs.validate_command != ''
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: ruby
+          bundler-cache: true
+
+      # Fails if a component can't be fetched, which catches typos in the ref
+      - name: Validate change
+        if: inputs.validate_command != ''
+        working-directory: ${{ inputs.validate_working_directory }}
+        env:
+          VALIDATE_COMMAND: ${{ inputs.validate_command }}
+        run: eval "${VALIDATE_COMMAND}"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "Promote ${{ inputs.component }} ${{ inputs.ref }} into ${{ inputs.branch }}"
+          branch: "promote/${{ inputs.branch }}/${{ inputs.component }}/${{ inputs.ref }}"
+          delete-branch: true
+          title: "Promote ${{ inputs.component }} ${{ inputs.ref }} into ${{ inputs.branch }}"
+          token: ${{ secrets.github_pat }}
+          assignees: '${{ github.triggering_actor }}'
+          author: '${{ steps.git_identity.outputs.git_author_name }} <${{ steps.git_identity.outputs.git_author_email }}>'
+          committer: '${{ steps.git_identity.outputs.git_committer_name }} <${{ steps.git_identity.outputs.git_committer_email }}>'
+          signoff: true
+          base: ${{ inputs.branch }}
+          body: |
+            Automated promotion of ${{ inputs.component }} to ref ${{ inputs.ref }} in ${{ inputs.branch }}.
