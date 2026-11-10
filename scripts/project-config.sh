@@ -14,6 +14,9 @@
 # script merges the derived matrix and the openvox server-fallback information
 # into it and prints the combined JSON object on stdout.
 #
+# It also puts the suite's Beaker options together, so that every acceptance
+# job starts from the same ones.
+#
 # Usage:
 #   project-config.sh <suite> <collection> [<qemu>]
 #
@@ -138,5 +141,21 @@ if [[ "$qemu" == "true" ]]; then
     config=$(jq -c --argjson os "$limited" '.os = $os' <<<"$config")
   fi
 fi
+
+# The Beaker options every cell of the suite gets. The acceptance jobs add what
+# only they know, like the ssh key and the shard tag.
+config=$(jq -c '
+  .["beaker-config"] = {
+      xml: true,
+      timesync: false,
+      repo_proxy: true,
+      add_el_extras: false,
+      "master-start-curl-retries": 30,
+      log_level: "debug",
+      preserve_hosts: "always",
+      type: "aio",
+      pre_suite: .["acceptance-pre-suite"],
+      tests: .["acceptance-tests"]
+    } + .["beaker-options"]' <<<"$config")
 
 echo "$config"
