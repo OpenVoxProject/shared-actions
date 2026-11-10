@@ -26,7 +26,8 @@ on:
         default: openvox9
       openvox-agent-version:
         description: |-
-          The version of the openvox-agent package to install.
+          The version of the openvox-agent package to install. The
+          Windows and MacOS cells only run when this is set.
         required: false
         type: string
       openvox-agent-pre-release-build:
@@ -483,3 +484,219 @@ jobs:
           # template...
           bundle exec beaker provision
           bundle exec beaker exec
+
+  # nested_vms has no MacOS or Windows images, so these cells run the
+  # openvox-agent suite, which needs no server, on GitHub-hosted runners
+  # of those systems with the runner itself as the agent.
+  acceptance-macos:
+    name: MacOS Acceptance Tests (${{ matrix.runner }})
+    needs: set-project-defaults
+    if: inputs.suite-name == 'openvox-agent' && !inputs.fips && inputs.openvox-agent-version != ''
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: macos-15, arch: arm64, platform: osx-15-arm64}
+          - {runner: macos-26, arch: arm64, platform: osx-26-arm64}
+          - {runner: macos-15-intel, arch: x86_64, platform: osx-15-x86_64}
+          - {runner: macos-26-intel, arch: x86_64, platform: osx-26-x86_64}
+    env:
+      ACCEPTANCE_WORKING_DIR: |-
+        ${{ format('{0}/{1}/{2}',
+                   github.workspace,
+                   needs.set-project-defaults.outputs.repository,
+                   needs.set-project-defaults.outputs.acceptance-working-dir) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ format('{0}/{1}', inputs.fork, needs.set-project-defaults.outputs.repository) }}
+          ref: ${{ inputs.ref }}
+          path: ${{ needs.set-project-defaults.outputs.repository }}
+
+      - name: Download the openvox-agent package
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.GCS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GCS_SECRET_ACCESS_KEY }}
+          # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
+          AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
+          GCS_BUCKET: ${{ inputs.openvox-agent-pre-release-build && vars.GCS_ARTIFACTS_BUCKET || '' }}
+          ARTIFACTS_URL: ${{ inputs.artifacts-url }}
+          VERSION: ${{ inputs.openvox-agent-version }}
+          DMG_ARCH: ${{ matrix.arch }}
+        run: |-
+          package="openvox-agent/${VERSION}/openvox-agent-${VERSION}-1.macos.all.${DMG_ARCH}.dmg"
+          if [[ -n "${GCS_BUCKET}" ]]; then
+            aws s3 cp --endpoint-url https://storage.googleapis.com \
+              "s3://${GCS_BUCKET}/${package}" "${RUNNER_TEMP}/openvox-agent.dmg"
+          else
+            curl --fail --silent --show-error --location \
+              --output "${RUNNER_TEMP}/openvox-agent.dmg" "${ARTIFACTS_URL}/${package}"
+          fi
+
+      - name: Install the openvox-agent package
+        run: |-
+          sudo hdiutil attach "${RUNNER_TEMP}/openvox-agent.dmg" -nobrowse -mountpoint /Volumes/openvox-agent
+          sudo installer -pkg /Volumes/openvox-agent/*.pkg -target /
+          /opt/puppetlabs/bin/puppet --version
+
+      - name: Install Ruby and Run Bundler for Acceptance Tests
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+          bundler-cache: true
+
+      - name: Write hosts.yaml and .beaker.yml
+        working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+        env:
+          BEAKER_PLATFORM: ${{ matrix.platform }}
+          BEAKER_CONFIG: ${{ needs.set-project-defaults.outputs.beaker-config }}
+        run: |-
+          # Beaker runs commands on a host named localhost with hypervisor
+          # none through its local connection instead of ssh.
+          cat > hosts.yaml <<EOF
+          ---
+          HOSTS:
+            localhost:
+              platform: ${BEAKER_PLATFORM}
+              hypervisor: none
+              roles:
+                - agent
+          EOF
+          cat hosts.yaml
+          printf '%s\n' "${BEAKER_CONFIG}" > .beaker.yml
+
+      - name: Run Beaker
+        working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+        run: |-
+          # The local connection runs the tests' commands as the user that
+          # runs Beaker, and the tests expect root.
+          sudo -E env "PATH=${PATH}" bundle exec beaker init --hosts hosts.yaml
+          sudo -E env "PATH=${PATH}" bundle exec beaker provision
+          sudo -E env "PATH=${PATH}" bundle exec beaker exec
+
+  acceptance-windows:
+    name: Windows Acceptance Tests (${{ matrix.runner }})
+    needs: set-project-defaults
+    if: inputs.suite-name == 'openvox-agent' && !inputs.fips && inputs.openvox-agent-version != ''
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2022, windows-2025]
+    env:
+      ACCEPTANCE_WORKING_DIR: |-
+        ${{ format('{0}/{1}/{2}',
+                   github.workspace,
+                   needs.set-project-defaults.outputs.repository,
+                   needs.set-project-defaults.outputs.acceptance-working-dir) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ format('{0}/{1}', inputs.fork, needs.set-project-defaults.outputs.repository) }}
+          ref: ${{ inputs.ref }}
+          path: ${{ needs.set-project-defaults.outputs.repository }}
+
+      - name: Download the openvox-agent package
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.GCS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.GCS_SECRET_ACCESS_KEY }}
+          # https://github.com/boto/boto3/issues/4398#issuecomment-2619946229
+          AWS_REQUEST_CHECKSUM_CALCULATION: "WHEN_REQUIRED"
+          AWS_RESPONSE_CHECKSUM_VALIDATION: "WHEN_REQUIRED"
+          GCS_BUCKET: ${{ inputs.openvox-agent-pre-release-build && vars.GCS_ARTIFACTS_BUCKET || '' }}
+          ARTIFACTS_URL: ${{ inputs.artifacts-url }}
+          VERSION: ${{ inputs.openvox-agent-version }}
+        run: |-
+          package="openvox-agent/${VERSION}/openvox-agent-${VERSION}-x64.msi"
+          if [[ -n "${GCS_BUCKET}" ]]; then
+            aws s3 cp --endpoint-url https://storage.googleapis.com \
+              "s3://${GCS_BUCKET}/${package}" "${RUNNER_TEMP}/openvox-agent.msi"
+          else
+            curl --fail --silent --show-error --location \
+              --output "${RUNNER_TEMP}/openvox-agent.msi" "${ARTIFACTS_URL}/${package}"
+          fi
+
+      - name: Install the openvox-agent package
+        run: |-
+          $log = "${env:RUNNER_TEMP}\openvox-agent-install.log"
+          # Manual keeps the agent service from starting runs of its own
+          # while the tests run.
+          $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"${env:RUNNER_TEMP}\openvox-agent.msi`" /qn /norestart /log `"$log`" PUPPET_AGENT_STARTUP_MODE=Manual"
+          if ($install.ExitCode -ne 0) {
+            Get-Content $log -Tail 100
+            exit $install.ExitCode
+          }
+          & "${env:ProgramFiles}\Puppet Labs\Puppet\bin\puppet.bat" --version
+
+      - name: Install Ruby and Run Bundler for Acceptance Tests
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+          bundler-cache: true
+
+      - name: Install Cygwin with sshd
+        # The tests' Windows branches were written for Beaker's cygwin host
+        # type, which runs their commands in Cygwin's shell over ssh. That
+        # host type needs Cygwin itself, so MSYS2 can't replace it. Beaker
+        # checks for Cygwin with cygcheck, and beaker-puppet's paths to the
+        # agent start with /cygdrive. Porting the tests to the powershell
+        # host type would remove the need for Cygwin.
+        uses: cygwin/cygwin-install-action@5a1b0cd107181fa6bb6bf3f90d500f4fb3132f18 # v7.0.0
+        with:
+          packages: openssh cygrunsrv curl
+          install-dir: C:\cygwin64
+          add-to-path: false
+
+      - name: Start the Cygwin sshd
+        # igncr makes Cygwin's bash accept Windows line endings.
+        shell: C:/cygwin64/bin/bash.exe --login -eo pipefail -o igncr '{0}'
+        run: |-
+          # ssh-host-config exits with its number of warnings.
+          ssh-host-config --yes || echo "ssh-host-config returned ${?}"
+          cygrunsrv -S cygsshd
+          # sshd takes the home from Cygwin's account database, not from HOME.
+          home="$(getent passwd "$(id -un)" | cut -d: -f6)"
+          mkdir -p "${home}/.ssh"
+          ssh-keygen -q -t rsa -N '' -f "${home}/.ssh/id_rsa"
+          cp "${home}/.ssh/id_rsa.pub" "${home}/.ssh/authorized_keys"
+          ssh -i "${home}/.ssh/id_rsa" -o BatchMode=yes -o StrictHostKeyChecking=no 127.0.0.1 'id && echo "${PATH}"'
+          echo "BEAKER_SSH_USER=$(id -un)" >> "${GITHUB_ENV}"
+          echo "BEAKER_SSH_KEY=$(cygpath -m "${home}/.ssh/id_rsa")" >> "${GITHUB_ENV}"
+
+      - name: Write hosts.yaml and .beaker.yml
+        working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+        shell: bash
+        env:
+          BEAKER_PLATFORM: ${{ matrix.runner }}-64
+          BEAKER_CONFIG: ${{ needs.set-project-defaults.outputs.beaker-config }}
+        run: |-
+          # Any name but localhost, so Beaker connects over ssh.
+          cat > hosts.yaml <<EOF
+          ---
+          HOSTS:
+            windows-agent:
+              ip: 127.0.0.1
+              user: ${BEAKER_SSH_USER}
+              platform: ${BEAKER_PLATFORM}
+              ruby_arch: x64
+              hypervisor: none
+              roles:
+                - agent
+          EOF
+          cat hosts.yaml
+          jq --arg ssh_key "${BEAKER_SSH_KEY}" '. + {ssh: {keys: [$ssh_key]}}' \
+            <<< "${BEAKER_CONFIG}" > .beaker.yml
+
+      - name: Run Beaker
+        working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
+        run: |-
+          bundle exec beaker init --hosts hosts.yaml &&
+            bundle exec beaker provision &&
+            bundle exec beaker exec
