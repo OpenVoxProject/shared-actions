@@ -654,6 +654,16 @@ jobs:
           install-dir: C:\cygwin64
           add-to-path: false
 
+      - name: Stop Windows' own sshd
+        # Windows Server 2025 comes with Microsoft's OpenSSH server, which
+        # holds port 22 when it runs.
+        run: |-
+          $service = Get-Service sshd -ErrorAction SilentlyContinue
+          if ($service) {
+            Write-Host "Windows' sshd service is $($service.Status), start type $($service.StartType)"
+            Stop-Service sshd
+          }
+
       - name: Start the Cygwin sshd
         # igncr makes Cygwin's bash accept Windows line endings.
         shell: C:/cygwin64/bin/bash.exe --login -eo pipefail -o igncr '{0}'
