@@ -668,6 +668,11 @@ jobs:
         # igncr makes Cygwin's bash accept Windows line endings.
         shell: C:/cygwin64/bin/bash.exe --login -eo pipefail -o igncr '{0}'
         run: |-
+          # Without noacl, the folders Cygwin creates on the Windows drives get
+          # POSIX-style ACLs, and files that only inherit those deny their owner
+          # access, so Puppet couldn't read the tests' facts or write its state.
+          # sshd reads this when it starts, so its sessions get it too.
+          echo 'none /cygdrive cygdrive binary,noacl,posix=0,user 0 0' > /etc/fstab
           # ssh-host-config exits with its number of warnings.
           ssh-host-config --yes || echo "ssh-host-config returned ${?}"
           if ! cygrunsrv -S cygsshd; then
