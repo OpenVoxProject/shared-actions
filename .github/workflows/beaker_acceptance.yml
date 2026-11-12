@@ -660,7 +660,16 @@ jobs:
         run: |-
           # ssh-host-config exits with its number of warnings.
           ssh-host-config --yes || echo "ssh-host-config returned ${?}"
-          cygrunsrv -S cygsshd
+          if ! cygrunsrv -S cygsshd; then
+            # sshd exited right after it started. Show its log, which cygrunsrv
+            # keeps in /var/log/cygsshd.log, and whatever holds port 22, such as
+            # Windows' own sshd service.
+            cat /var/log/cygsshd.log || true
+            netstat.exe -ano | grep -E ':22[[:space:]]' || true
+            sc.exe query sshd || true
+            wevtutil.exe qe Application /rd:true /c:10 /f:text || true
+            exit 1
+          fi
           # sshd takes the home from Cygwin's account database, not from HOME.
           home="$(getent passwd "$(id -un)" | cut -d: -f6)"
           mkdir -p "${home}/.ssh"
