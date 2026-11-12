@@ -25,7 +25,7 @@ set -euo pipefail
 suite=${1:?usage: build-job-matrix.sh <suite> <collection> [<arch>] [<qemu>]}
 collection=${2:?usage: build-job-matrix.sh <suite> <collection> [<arch>] [<qemu>]}
 arch=${3:-x86_64}
-qemu=${5:-false}
+qemu=${4:-false}
 
 script_dir=$(dirname "${BASH_SOURCE[0]}")
 project_config=$("${script_dir}/project-config.sh" "${suite}" "${collection}" "${qemu}")
