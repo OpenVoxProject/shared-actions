@@ -161,3 +161,17 @@ I don't know why ubuntu qemu arm64 runs 2-4x slower than el/debian,
 but it does and was consistently hitting the 6 hour gha job timeout on
 all the suites except openvox-agent, which is why it's excluded
 everywhere but there.
+
+#### Windows and MacOS Support
+
+nested_vms has no Windows or MacOS images, so the openvox-agent suite
+also runs on GitHub-hosted Windows and MacOS runners, with the runner
+itself as the only Beaker host. These cells install the MSI or DMG of
+`openvox-agent-version` from the artifacts-url server, or from the GCS
+bucket when one is configured. They are skipped when no version is
+given and in FIPS runs.
+
+On MacOS, Beaker runs under sudo and reaches the runner through its
+local connection. On Windows, it connects over ssh to an sshd in
+Cygwin, because the tests' Windows branches were written for Beaker's
+cygwin host type.
