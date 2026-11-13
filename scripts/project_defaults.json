@@ -21,6 +21,14 @@
       "helper":       "lib/helper.rb",
       "options_file": "config/aio/options.rb"
     },
+    "serverless-beaker-options": {
+      "pre_suite": [
+        "pre-suite/000_configure_type_defaults.rb",
+        "pre-suite/015_prep_locales.rb"
+      ],
+      "test_tag_exclude": ["server"],
+      "masterless": true
+    },
     "os-add": [],
     "vms": [
       {

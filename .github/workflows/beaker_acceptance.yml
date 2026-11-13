@@ -144,6 +144,8 @@ jobs:
       install-termini: ${{ steps.set-defaults.outputs.install_termini }}
       acceptance-working-dir: ${{ steps.set-defaults.outputs.acceptance_working_dir }}
       beaker-config: ${{ steps.set-defaults.outputs.beaker_config }}
+      serverless-beaker-config: ${{ steps.set-defaults.outputs.serverless_beaker_config }}
+      acceptance-shard-tags: ${{ steps.set-defaults.outputs.acceptance_shard_tags }}
     steps:
       - name: Checkout platform config
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -485,23 +487,26 @@ jobs:
           bundle exec beaker provision
           bundle exec beaker exec
 
-  # nested_vms has no MacOS or Windows images, so these cells run the
-  # openvox-agent suite, which needs no server, on GitHub-hosted runners
-  # of those systems with the runner itself as the agent.
+  # nested_vms has no MacOS or Windows images, so these cells run the tests
+  # that need no server on GitHub-hosted runners of those systems, with the
+  # runner itself as the agent. That is the whole openvox-agent suite, and the
+  # openvox suite without its tests tagged server.
   acceptance-macos:
-    name: MacOS Acceptance Tests (${{ matrix.runner }})
+    name: MacOS Acceptance Tests (${{ matrix.host.runner }}${{ matrix.shard && format(', {0}', matrix.shard) || '' }})
     needs: set-project-defaults
-    if: inputs.suite-name == 'openvox-agent' && !inputs.fips && inputs.openvox-agent-version != ''
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    if: (inputs.suite-name == 'openvox-agent' || inputs.suite-name == 'openvox') && !inputs.fips && inputs.openvox-agent-version != ''
+    runs-on: ${{ matrix.host.runner }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        include:
+        host:
           - {runner: macos-15, arch: arm64, platform: osx-15-arm64}
           - {runner: macos-26, arch: arm64, platform: osx-26-arm64}
           - {runner: macos-15-intel, arch: x86_64, platform: osx-15-x86_64}
           - {runner: macos-26-intel, arch: x86_64, platform: osx-26-x86_64}
+        # One cell per runner for a suite without shard tags.
+        shard: ${{ fromJson(needs.set-project-defaults.outputs.acceptance-shard-tags)[0] && fromJson(needs.set-project-defaults.outputs.acceptance-shard-tags) || fromJson('[""]') }}
     env:
       ACCEPTANCE_WORKING_DIR: |-
         ${{ format('{0}/{1}/{2}',
@@ -525,7 +530,7 @@ jobs:
           GCS_BUCKET: ${{ inputs.openvox-agent-pre-release-build && vars.GCS_ARTIFACTS_BUCKET || '' }}
           ARTIFACTS_URL: ${{ inputs.artifacts-url }}
           VERSION: ${{ inputs.openvox-agent-version }}
-          DMG_ARCH: ${{ matrix.arch }}
+          DMG_ARCH: ${{ matrix.host.arch }}
         run: |-
           package="openvox-agent/${VERSION}/openvox-agent-${VERSION}-1.macos.all.${DMG_ARCH}.dmg"
           if [[ -n "${GCS_BUCKET}" ]]; then
@@ -552,8 +557,9 @@ jobs:
       - name: Write hosts.yaml and .beaker.yml
         working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
         env:
-          BEAKER_PLATFORM: ${{ matrix.platform }}
-          BEAKER_CONFIG: ${{ needs.set-project-defaults.outputs.beaker-config }}
+          BEAKER_PLATFORM: ${{ matrix.host.platform }}
+          BEAKER_CONFIG: ${{ needs.set-project-defaults.outputs.serverless-beaker-config }}
+          SHARD: ${{ matrix.shard }}
         run: |-
           # Beaker runs commands on a host named localhost with hypervisor
           # none through its local connection instead of ssh.
@@ -567,7 +573,11 @@ jobs:
                 - agent
           EOF
           cat hosts.yaml
-          printf '%s\n' "${BEAKER_CONFIG}" > .beaker.yml
+          # A suite without shard tags gets an empty list, which runs every test.
+          jq --arg shard "${SHARD}" \
+            '. + {test_tag_and: (if $shard == "" then [] else [$shard] end)}' \
+            <<< "${BEAKER_CONFIG}" > .beaker.yml
+          cat .beaker.yml
 
       - name: Run Beaker
         working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
@@ -579,15 +589,17 @@ jobs:
           sudo -E env "PATH=${PATH}" bundle exec beaker exec
 
   acceptance-windows:
-    name: Windows Acceptance Tests (${{ matrix.runner }})
+    name: Windows Acceptance Tests (${{ matrix.runner }}${{ matrix.shard && format(', {0}', matrix.shard) || '' }})
     needs: set-project-defaults
-    if: inputs.suite-name == 'openvox-agent' && !inputs.fips && inputs.openvox-agent-version != ''
+    if: (inputs.suite-name == 'openvox-agent' || inputs.suite-name == 'openvox') && !inputs.fips && inputs.openvox-agent-version != ''
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         runner: [windows-2022, windows-2025]
+        # One cell per runner for a suite without shard tags.
+        shard: ${{ fromJson(needs.set-project-defaults.outputs.acceptance-shard-tags)[0] && fromJson(needs.set-project-defaults.outputs.acceptance-shard-tags) || fromJson('[""]') }}
     env:
       ACCEPTANCE_WORKING_DIR: |-
         ${{ format('{0}/{1}/{2}',
@@ -699,7 +711,8 @@ jobs:
         shell: bash
         env:
           BEAKER_PLATFORM: ${{ matrix.runner }}-64
-          BEAKER_CONFIG: ${{ needs.set-project-defaults.outputs.beaker-config }}
+          BEAKER_CONFIG: ${{ needs.set-project-defaults.outputs.serverless-beaker-config }}
+          SHARD: ${{ matrix.shard }}
         run: |-
           # Any name but localhost, so Beaker connects over ssh.
           cat > hosts.yaml <<EOF
@@ -715,8 +728,11 @@ jobs:
                 - agent
           EOF
           cat hosts.yaml
-          jq --arg ssh_key "${BEAKER_SSH_KEY}" '. + {ssh: {keys: [$ssh_key]}}' \
+          # A suite without shard tags gets an empty list, which runs every test.
+          jq --arg ssh_key "${BEAKER_SSH_KEY}" --arg shard "${SHARD}" \
+            '. + {ssh: {keys: [$ssh_key]}, test_tag_and: (if $shard == "" then [] else [$shard] end)}' \
             <<< "${BEAKER_CONFIG}" > .beaker.yml
+          cat .beaker.yml
 
       - name: Run Beaker
         working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
