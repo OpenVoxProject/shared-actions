@@ -164,9 +164,16 @@ everywhere but there.
 
 #### Windows and MacOS Support
 
-nested_vms has no Windows or MacOS images, so the openvox-agent suite
-also runs on GitHub-hosted Windows and MacOS runners, with the runner
-itself as the only Beaker host. These cells install the MSI or DMG of
+nested_vms has no Windows or MacOS images, so the tests that need no
+server also run on GitHub-hosted Windows and MacOS runners, with the
+runner itself as the only Beaker host: the whole openvox-agent suite,
+and the openvox suite without its tests tagged `server`, split into the
+suite's shards. A suite's `serverless-beaker-options` in
+`scripts/project_defaults.json` adjust its Beaker options for these
+cells. The openvox suite uses them to run only the pre-suite steps that
+need no server, skip tests tagged `server`, and set Beaker's
+`masterless` option.
+These cells install the MSI or DMG of
 `openvox-agent-version` from the artifacts-url server, or from the GCS
 bucket when one is configured. They are skipped when no version is
 given and in FIPS runs.

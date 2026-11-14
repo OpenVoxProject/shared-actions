@@ -158,4 +158,10 @@ config=$(jq -c '
       tests: .["acceptance-tests"]
     } + .["beaker-options"]' <<<"$config")
 
+# The Windows and MacOS cells have no server, so a suite with tests that need
+# one narrows them there with serverless-beaker-options.
+config=$(jq -c '
+  .["serverless-beaker-config"] =
+    .["beaker-config"] + (.["serverless-beaker-options"] // {})' <<<"$config")
+
 echo "$config"
