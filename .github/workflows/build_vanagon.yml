@@ -289,7 +289,7 @@ jobs:
     if: >-
       ${{ inputs.upload_to_s3
       && needs.set-matrix.outputs.tag_exists == 'true'
-      && contains(fromJSON('["openvox-agent", "openbolt"]'), inputs.project_name) }}
+      && contains(fromJSON('["openvox-agent", "openbolt", "openvox-server"]'), inputs.project_name) }}
     runs-on: ubuntu-26.04
     steps:
       - name: Update openvox-sbom-tools data
