@@ -73,6 +73,8 @@ It:
   to generate a set of test target vms using the
   [kvm_automation_tooling](https://github.com/jpartlow/kvm_automation_tooling)
   Bolt module.
+* updates the CA certificates on the test target vms, because their
+  cloud images can be years old.
 * installs the selected openvox components, either from collections
   served from the apt and yum voxpupuli repositories, or from the
   artifacts-url server for pre-release builds.
