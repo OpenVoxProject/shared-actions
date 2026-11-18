@@ -41,6 +41,7 @@ jobs:
         with:
           auto_merge_enabled: true
           auto_merge_method: merge
+          merge_commits: skip
           github_token: ${{ secrets.github_pat }}
           git_committer_name: ${{ steps.git_identity.outputs.git_committer_name }}
           git_committer_email: ${{ steps.git_identity.outputs.git_committer_email }}
