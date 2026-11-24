@@ -451,7 +451,7 @@ jobs:
           cat "${HOSTS_YAML}"
 
       - name: Install Ruby and Run Bundler for Acceptance Tests
-        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
@@ -561,7 +561,7 @@ jobs:
           /opt/puppetlabs/bin/puppet --version
 
       - name: Install Ruby and Run Bundler for Acceptance Tests
-        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
@@ -660,7 +660,7 @@ jobs:
           & "${env:ProgramFiles}\Puppet Labs\Puppet\bin\puppet.bat" --version
 
       - name: Install Ruby and Run Bundler for Acceptance Tests
-        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           working-directory: ${{ env.ACCEPTANCE_WORKING_DIR }}
